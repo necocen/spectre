@@ -1,7 +1,14 @@
-use std::f32::consts::PI;
-
+use anchor::Anchor;
+use angle::Angle;
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_prototype_lyon::prelude::*;
+use spectre::Spectre;
+use spectre_like::SpectreLike as _;
+
+mod anchor;
+mod angle;
+mod spectre;
+mod spectre_like;
 
 fn main() {
     App::new()
@@ -79,7 +86,7 @@ fn place_connected_tiles(
     connections: &[(usize, Anchor, Anchor)],
 ) {
     for (from_idx, from_anchor, to_anchor) in connections {
-        let tile = tiles[*from_idx].adjacent_anchor(*from_anchor, *to_anchor);
+        let tile = tiles[*from_idx].adjacent_spectre(*from_anchor, *to_anchor);
         let tile_clone = tile.clone();
         tiles.push(tile);
         spawn_tile(commands, &tile_clone);
@@ -100,10 +107,14 @@ fn setup_tiles(mut commands: Commands) {
 
     // 中心となるタイルを生成（原点に配置、角度0度）
     let center =
-        Spectre::new_with_anchor(Vec2::new(0.0, 0.0), Anchor::Anchor1, TILE_SIZE, Angle::ZERO);
+        Spectre::new_with_anchor(Vec2::new(0.0, 0.0), Anchor::Anchor1, TILE_SIZE, Angle::ZERO)
+            .to_mystic_like();
 
-    spawn_tile(&mut commands, &center);
-    let mut tiles = vec![center.clone()];
+    let center_spectres = center.spectres();
+    for spectre in center_spectres {
+        spawn_tile(&mut commands, spectre);
+    }
+    let mut tiles = vec![center.spectres()[0].clone()];
 
     // 1段目：中心タイルから4方向に接続
     let inner_connections = [
@@ -195,265 +206,5 @@ fn camera_movement_system(
                 controller.last_position = pos;
             }
         }
-    }
-}
-
-/// タイルの接続点を表す
-#[derive(Debug, Clone, Copy)]
-pub enum Anchor {
-    /// 基準となる接続点（インデックス0）
-    Anchor1,
-    /// 2番目の接続点（インデックス4）
-    Anchor2,
-    /// 3番目の接続点（インデックス6）
-    Anchor3,
-    /// 4番目の接続点（インデックス8）
-    Anchor4,
-}
-
-impl Anchor {
-    /// 各アンカーの頂点配列におけるインデックス
-    const ANCHOR1_INDEX: usize = 0;
-    const ANCHOR2_INDEX: usize = 4;
-    const ANCHOR3_INDEX: usize = 6;
-    const ANCHOR4_INDEX: usize = 8;
-
-    /// アンカーに対応する頂点配列のインデックスを取得する
-    fn index(&self) -> usize {
-        match self {
-            Anchor::Anchor1 => Self::ANCHOR1_INDEX,
-            Anchor::Anchor2 => Self::ANCHOR2_INDEX,
-            Anchor::Anchor3 => Self::ANCHOR3_INDEX,
-            Anchor::Anchor4 => Self::ANCHOR4_INDEX,
-        }
-    }
-}
-
-/// タイルの形状を表す
-#[derive(Clone)]
-struct Spectre {
-    /// 辺の長さ
-    size: f32,
-    /// タイルの回転角度
-    angle: Angle,
-    /// タイルを構成する頂点の座標
-    points: [Vec2; Spectre::VERTEX_COUNT],
-}
-
-/// 角度を表す型（0〜11）
-///
-/// # Details
-/// 12方向の角度を表現し、加減算は自動的にmod 12で正規化されます。
-#[derive(Debug, Clone, Copy)]
-struct Angle(u8);
-
-impl Angle {
-    /// 角度0度
-    const ZERO: Self = Self(0);
-    /// 反対方向（180度）
-    const OPPOSITE: Self = Self(6);
-
-    /// 角度を正規化して新しいAngleを生成
-    const fn new(value: i32) -> Self {
-        Self(value.rem_euclid(12) as u8)
-    }
-
-    /// 内部値を取得（0-11）
-    pub fn value(self) -> u8 {
-        self.0
-    }
-
-    /// ラジアンに変換
-    fn to_radians(self) -> f32 {
-        self.0 as f32 * PI / 6.0
-    }
-}
-
-// 角度の加算（自動的にmod 12）
-impl std::ops::Add for Angle {
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self {
-        Self::new(self.0 as i32 + rhs.0 as i32)
-    }
-}
-
-// 角度の減算（自動的にmod 12）
-impl std::ops::Sub for Angle {
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self {
-        Self::new(self.0 as i32 - rhs.0 as i32)
-    }
-}
-
-// 角度の加算代入
-impl std::ops::AddAssign for Angle {
-    fn add_assign(&mut self, rhs: Self) {
-        *self = *self + rhs;
-    }
-}
-
-// 角度の減算代入
-impl std::ops::SubAssign for Angle {
-    fn sub_assign(&mut self, rhs: Self) {
-        *self = *self - rhs;
-    }
-}
-
-// u8からの変換
-impl From<u8> for Angle {
-    fn from(value: u8) -> Self {
-        Self::new(value as i32)
-    }
-}
-
-// i32からの変換
-impl From<i32> for Angle {
-    fn from(value: i32) -> Self {
-        Self::new(value)
-    }
-}
-
-impl Spectre {
-    /// 頂点数
-    const VERTEX_COUNT: usize = 14;
-    /// 各頂点から反時計回りに進む辺の角度（0〜ANGLE_COUNT-1）
-    const DIRECTIONS: [Angle; Self::VERTEX_COUNT] = [
-        Angle::new(0),
-        Angle::new(0),
-        Angle::new(2),
-        Angle::new(11),
-        Angle::new(1),
-        Angle::new(4),
-        Angle::new(6),
-        Angle::new(3),
-        Angle::new(5),
-        Angle::new(8),
-        Angle::new(6),
-        Angle::new(9),
-        Angle::new(7),
-        Angle::new(10),
-    ];
-
-    /// 指定されたアンカーを基準点としてタイルを生成する
-    pub fn new_with_anchor(
-        anchor_point: Vec2,
-        anchor: Anchor,
-        size: f32,
-        angle: impl Into<Angle>,
-    ) -> Self {
-        Self::new_with_anchor_at(anchor_point, anchor.index(), size, angle.into())
-    }
-
-    /// 指定された角度の方向ベクトルを計算する
-    fn direction_vector(angle: Angle, direction: Angle) -> Vec2 {
-        let total_angle = angle + direction;
-        let rad = total_angle.to_radians();
-        Vec2::new(rad.cos(), rad.sin())
-    }
-
-    /// 指定されたアンカーを基準に点を配置する
-    ///
-    /// # Arguments
-    /// * `anchor_point` - アンカーの座標
-    /// * `anchor_index` - アンカーのインデックス
-    /// * `size` - 辺の長さ
-    /// * `angle` - 基準角度（0〜ANGLE_COUNT-1）
-    fn new_with_anchor_at(
-        anchor_point: Vec2,
-        anchor_index: usize,
-        size: f32,
-        angle: Angle,
-    ) -> Self {
-        let mut points = [Vec2::ZERO; Self::VERTEX_COUNT];
-        points[anchor_index] = anchor_point;
-
-        // アンカーから前方の点を配置
-        Self::place_points_before(&mut points[..anchor_index], anchor_point, angle, size);
-
-        // アンカーから後方の点を配置
-        Self::place_points_after(
-            &mut points[anchor_index + 1..],
-            anchor_point,
-            anchor_index,
-            angle,
-            size,
-        );
-
-        Self {
-            size,
-            angle,
-            points,
-        }
-    }
-
-    /// アンカーより前方の点を配置する（反時計回り）
-    fn place_points_before(points: &mut [Vec2], start: Vec2, angle: Angle, size: f32) {
-        let mut p = start;
-        for (i, point) in points.iter_mut().enumerate().rev() {
-            let dir = Self::direction_vector(angle, Self::DIRECTIONS[i]);
-            p -= dir * size;
-            *point = p;
-        }
-    }
-
-    /// アンカーより後方の点を配置する（時計回り）
-    fn place_points_after(
-        points: &mut [Vec2],
-        start: Vec2,
-        anchor_index: usize,
-        angle: Angle,
-        size: f32,
-    ) {
-        let mut p = start;
-        for (i, point) in points.iter_mut().enumerate() {
-            let dir = Self::direction_vector(angle, Self::DIRECTIONS[anchor_index + i]);
-            p += dir * size;
-            *point = p;
-        }
-    }
-
-    /// アンカーから出る辺の方向を取得する
-    fn edge_direction(anchor: Anchor) -> Angle {
-        Self::DIRECTIONS[anchor.index()]
-    }
-
-    /// アンカーに入る辺の方向を取得する
-    fn prev_edge_direction(anchor: Anchor) -> Angle {
-        Self::DIRECTIONS[(anchor.index() + Self::VERTEX_COUNT - 1) % Self::VERTEX_COUNT]
-    }
-
-    /// 指定されたアンカー同士を接続した新しいSpectreを生成する
-    ///
-    /// # Arguments
-    /// * `from_anchor` - このSpectreの接続元アンカー
-    /// * `to_anchor` - 新しいSpectreの接続先アンカー
-    ///
-    /// # Returns
-    /// 接続された新しいSpectre。このSpectreのfrom_anchorと新しいSpectreのto_anchorが接続される。
-    pub fn adjacent_anchor(&self, from_anchor: Anchor, to_anchor: Anchor) -> Spectre {
-        // 接続する辺の方向を取得
-        let out_dir = Self::edge_direction(from_anchor);
-        let in_dir = Self::prev_edge_direction(to_anchor);
-
-        // 新しいSpectreの角度を計算
-        // 1. 現在の角度を基準に
-        // 2. 出る辺の方向を加える
-        // 3. 入る辺の方向を引く
-        // 4. 180度（6方向）回転させて反対向きにする
-        let angle = self.angle + out_dir - (in_dir - Angle::OPPOSITE);
-
-        // 新しいSpectreを生成：接続点を基準に配置
-        Self::new_with_anchor(
-            self.points[from_anchor.index()],
-            to_anchor,
-            self.size,
-            angle,
-        )
-    }
-
-    pub fn anchor(&self, anchor: Anchor) -> Vec2 {
-        self.points[anchor.index()]
     }
 }
