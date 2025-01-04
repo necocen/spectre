@@ -515,8 +515,8 @@ impl SpectreLike for Spectre {
         Spectre::prev_edge_direction(anchor) + self.angle
     }
 
-    fn spectres(&self) -> Vec<&Spectre> {
-        vec![self]
+    fn spectres(&self) -> Box<dyn Iterator<Item = &Spectre> + '_> {
+        Box::new(std::iter::once(self))
     }
 }
 
@@ -551,20 +551,21 @@ impl SpectreLike for SuperSpectre {
         }
     }
 
-    fn spectres(&self) -> Vec<&Spectre> {
-        vec![
-            self.a.spectres(),
-            self.b.spectres(),
-            self.c.spectres(),
-            self.d.spectres(),
-            self.e.spectres(),
-            self.f.spectres(),
-            self.g.spectres(),
-            self.h.spectres(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+    fn spectres(&self) -> Box<dyn Iterator<Item = &Spectre> + '_> {
+        Box::new(
+            vec![
+                self.a.spectres(),
+                self.b.spectres(),
+                self.c.spectres(),
+                self.d.spectres(),
+                self.e.spectres(),
+                self.f.spectres(),
+                self.g.spectres(),
+                self.h.spectres(),
+            ]
+            .into_iter()
+            .flatten(),
+        )
     }
 }
 
@@ -586,8 +587,8 @@ impl MysticLike for Mystic {
     fn anchor(&self, anchor: Anchor) -> Vec2 {
         self.a.anchor(anchor)
     }
-    fn spectres(&self) -> Vec<&Spectre> {
-        vec![&self.a, &self.b]
+    fn spectres(&self) -> Box<dyn Iterator<Item = &Spectre> + '_> {
+        Box::new(std::iter::once(&self.a).chain(std::iter::once(&self.b)))
     }
 }
 
@@ -603,18 +604,20 @@ impl MysticLike for SuperMystic {
             Anchor::Anchor4 => self.a.anchor(Anchor::Anchor2),
         }
     }
-    fn spectres(&self) -> Vec<&Spectre> {
-        vec![
-            self.a.spectres(),
-            self.b.spectres(),
-            self.c.spectres(),
-            self.d.spectres(),
-            self.f.spectres(),
-            self.g.spectres(),
-            self.h.spectres(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+
+    fn spectres(&self) -> Box<dyn Iterator<Item = &Spectre> + '_> {
+        Box::new(
+            vec![
+                self.a.spectres(),
+                self.b.spectres(),
+                self.c.spectres(),
+                self.d.spectres(),
+                self.f.spectres(),
+                self.g.spectres(),
+                self.h.spectres(),
+            ]
+            .into_iter()
+            .flatten(),
+        )
     }
 }
