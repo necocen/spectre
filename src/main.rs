@@ -36,7 +36,7 @@ fn setup_camera(mut commands: Commands) {
 /// タイルの頂点から多角形を生成し、angleに応じた色で描画します。
 /// 色はHSVカラーモデルを使用し、以下のように決定されます：
 /// - 色相（H）：angleを30度ごとに割り当て（0-360度）
-/// - 彩度（S）：80%で固定
+/// - 彩度（S）：位置によって決定（0.333-1.0）
 /// - 明度（V）：80%で固定
 fn spawn_tile(commands: &mut Commands, spectre: &Spectre) {
     // TODO: この部分は定数にできるはず
@@ -56,10 +56,9 @@ fn spawn_tile(commands: &mut Commands, spectre: &Spectre) {
     // angleから色相を計算（30度ごと）
     let hue = spectre.angle.value() as f32 * 30.0;
     // positionら彩度を計算（0.333-1.0）
-    let saturation = ((0.333 * position.length() / spectre.size).sin()
-        + (0.5 * position.x / spectre.size).sin()
-        + (0.666 * position.y / spectre.size).sin())
-        * 0.111
+    let saturation = (1.166 * position.x / spectre.size).sin()
+        * (1.166 * position.y / spectre.size).sin()
+        * 0.333
         + 0.666;
     println!(
         "angle: {}, length: {}, hue: {}, saturation: {}",
