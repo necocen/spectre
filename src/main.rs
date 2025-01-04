@@ -39,12 +39,15 @@ fn setup_camera(mut commands: Commands) {
 /// - 彩度（S）：位置によって決定（0.333-1.0）
 /// - 明度（V）：80%で固定
 fn spawn_tile(commands: &mut Commands, spectre: &Spectre) {
+    // タイルのサイズを設定
+    const TILE_SIZE: f32 = 10.0;
     // TODO: この部分は定数にできるはず
     // タイルの頂点から多角形を生成
-    let polygon: Lazy<shapes::Polygon> = Lazy::new(|| shapes::Polygon {
-        points: Spectre::new_with_anchor(Vec2::ZERO, Anchor::Anchor1, 1.0, Angle::ZERO)
-            .all_points(),
-        closed: true,
+    let path: Lazy<Path> = Lazy::new(|| {
+        GeometryBuilder::build_as(&shapes::Polygon {
+            points: Spectre::new_with_anchor(Vec2::ZERO, Anchor::Anchor1, Angle::ZERO).all_points(),
+            closed: true,
+        })
     });
 
     let position = (spectre.anchor(Anchor::Anchor1)
@@ -56,32 +59,29 @@ fn spawn_tile(commands: &mut Commands, spectre: &Spectre) {
     // angleから色相を計算（30度ごと）
     let hue = spectre.angle.value() as f32 * 30.0;
     // positionら彩度を計算（0.333-1.0）
-    let saturation = (1.166 * position.x / spectre.size).sin()
-        * (1.166 * position.y / spectre.size).sin()
-        * 0.333
-        + 0.666;
-    println!(
-        "angle: {}, length: {}, hue: {}, saturation: {}",
-        spectre.angle.value(),
-        position.length(),
-        hue,
-        saturation
-    );
+    let saturation = (1.166 * position.x).sin() * 0.333 + 0.666;
+    // println!(
+    //     "angle: {}, length: {}, hue: {}, saturation: {}",
+    //     spectre.angle.value(),
+    //     position.length(),
+    //     hue,
+    //     saturation
+    // );
     // HSVからRGBに変換（彩度80%、明度80%）
     let color = Color::hsl(hue, saturation, 0.8);
-
-    let transform = Transform::from_translation(Vec3::new(
-        spectre.anchor(Anchor::Anchor1).x,
-        spectre.anchor(Anchor::Anchor1).y,
-        0.0,
-    ))
-    .with_scale(Vec3::splat(spectre.size))
-    .with_rotation(Quat::from_rotation_z(spectre.angle.to_radians()));
+    // 位置
+    let transform = Transform::from_scale(Vec3::splat(TILE_SIZE))
+        .mul_transform(Transform::from_translation(
+            spectre.anchor(Anchor::Anchor1).extend(0.0),
+        ))
+        .mul_transform(Transform::from_rotation(Quat::from_rotation_z(
+            spectre.angle.to_radians(),
+        )));
 
     // タイルのエンティティを生成
     commands.spawn((
         ShapeBundle {
-            path: GeometryBuilder::build_as(&*polygon),
+            path: path.clone(),
             transform,
             ..default()
         },
@@ -91,14 +91,13 @@ fn spawn_tile(commands: &mut Commands, spectre: &Spectre) {
 
 /// タイルを配置するシステム
 fn setup_tiles(mut commands: Commands) {
-    // タイルのサイズを設定
-    const TILE_SIZE: f32 = 10.0;
-
-    let cluster =
-        SuperSpectre::new_with_anchor(5, Vec2::ZERO, Anchor::Anchor1, TILE_SIZE, Angle::ZERO);
+    let cluster = SuperSpectre::new_with_anchor(5, Vec2::ZERO, Anchor::Anchor1, Angle::ZERO);
+    let mut counter = 0;
     for spectre in cluster.spectres() {
         spawn_tile(&mut commands, spectre);
+        counter += 1;
     }
+    println!("counter: {}", counter);
 }
 
 /// カメラの移動を制御するコンポーネント

@@ -9,11 +9,9 @@ use crate::{
 /// タイルの形状を表す
 #[derive(Clone)]
 pub struct Spectre {
-    /// 辺の長さ
-    pub size: f32,
-    /// タイルの回転角度
+    /// アンカー1から反時計回りに進む辺の向く方向
     pub angle: Angle,
-
+    /// アンカー1の座標
     pub anchor1: Vec2,
 }
 
@@ -39,13 +37,8 @@ impl Spectre {
     ];
 
     /// 指定されたアンカーを基準点としてタイルを生成する
-    pub fn new_with_anchor(
-        anchor_point: Vec2,
-        anchor: Anchor,
-        size: f32,
-        angle: impl Into<Angle>,
-    ) -> Self {
-        Self::new_with_anchor_at(anchor_point, anchor.index(), size, angle.into())
+    pub fn new_with_anchor(anchor_point: Vec2, anchor: Anchor, angle: impl Into<Angle>) -> Self {
+        Self::new_with_anchor_at(anchor_point, anchor.index(), angle.into())
     }
 
     /// 指定された角度の方向ベクトルを計算する
@@ -62,12 +55,7 @@ impl Spectre {
     /// * `anchor_index` - アンカーのインデックス
     /// * `size` - 辺の長さ
     /// * `angle` - anchor_pointから出る辺の角度
-    fn new_with_anchor_at(
-        anchor_point: Vec2,
-        anchor_index: usize,
-        size: f32,
-        angle: Angle,
-    ) -> Self {
+    fn new_with_anchor_at(anchor_point: Vec2, anchor_index: usize, angle: Angle) -> Self {
         let mut points = [Vec2::ZERO; Self::VERTEX_COUNT];
         points[anchor_index] = anchor_point;
         let angle = angle - Self::DIRECTIONS[anchor_index];
@@ -75,21 +63,20 @@ impl Spectre {
         // TODO: ここもうちょっと効率化したほうがいいけどね
 
         // アンカーから前方の点を配置
-        Self::place_points_before(&mut points[..anchor_index], anchor_point, angle, size);
+        Self::place_points_before(&mut points[..anchor_index], anchor_point, angle);
 
         Self {
-            size,
             angle,
             anchor1: points[0],
         }
     }
 
     /// アンカーより前方の点を配置する（反時計回り）
-    fn place_points_before(points: &mut [Vec2], start: Vec2, angle: Angle, size: f32) {
+    fn place_points_before(points: &mut [Vec2], start: Vec2, angle: Angle) {
         let mut p = start;
         for (i, point) in points.iter_mut().enumerate().rev() {
             let dir = Self::direction_vector(angle, Self::DIRECTIONS[i]);
-            p -= dir * size;
+            p -= dir;
             *point = p;
         }
     }
@@ -118,12 +105,7 @@ impl Spectre {
         let angle = self.edge_direction(from_anchor) + rotation;
 
         // 新しいSpectreを生成：接続点を基準に配置
-        Self::new_with_anchor(
-            self.points(from_anchor.index()),
-            to_anchor,
-            self.size,
-            angle,
-        )
+        Self::new_with_anchor(self.points(from_anchor.index()), to_anchor, angle)
     }
 
     pub fn anchor(&self, anchor: Anchor) -> Vec2 {
@@ -135,7 +117,7 @@ impl Spectre {
         let mut p = self.anchor1;
         for i in 0..index {
             let dir = Self::direction_vector(self.angle, Self::DIRECTIONS[i]);
-            p += dir * self.size;
+            p += dir;
         }
         p
     }
@@ -146,7 +128,7 @@ impl Spectre {
 
     fn into_mystic(self) -> Mystic {
         let a = self.clone();
-        let b = Spectre::new_with_anchor_at(a.points(1), 13, a.size, a.angle + Angle::new(9));
+        let b = Spectre::new_with_anchor_at(a.points(1), 13, a.angle + Angle::new(9));
         Mystic { a, b }
     }
 }
@@ -181,60 +163,44 @@ impl SuperSpectre {
         h: impl MysticLike + 'static,
         level: usize,
     ) -> Self {
-        assert!(a.size() == b.size());
-        assert!(b.size() == c.size());
-        assert!(c.size() == d.size());
-        assert!(d.size() == e.size());
-        assert!(e.size() == f.size());
-        assert!(f.size() == g.size());
-        assert!(g.size() == h.size());
-
         assert!(
             h.anchor(Anchor::Anchor1)
                 .distance_squared(a.anchor(Anchor::Anchor1))
-                / a.size()
                 < 0.01
         );
         assert!(
             a.anchor(Anchor::Anchor3)
                 .distance_squared(b.anchor(Anchor::Anchor1))
-                / a.size()
                 < 0.01
         );
         assert!(
             b.anchor(Anchor::Anchor4)
                 .distance_squared(c.anchor(Anchor::Anchor2))
-                / a.size()
                 < 0.01
         );
         assert!(
             c.anchor(Anchor::Anchor3)
                 .distance_squared(d.anchor(Anchor::Anchor1))
-                / a.size()
                 < 0.01
         );
         assert!(
             d.anchor(Anchor::Anchor3)
                 .distance_squared(e.anchor(Anchor::Anchor1))
-                / a.size()
                 < 0.01
         );
         assert!(
             e.anchor(Anchor::Anchor4)
                 .distance_squared(f.anchor(Anchor::Anchor2))
-                / a.size()
                 < 0.01
         );
         assert!(
             f.anchor(Anchor::Anchor3)
                 .distance_squared(g.anchor(Anchor::Anchor1))
-                / a.size()
                 < 0.01
         );
         assert!(
             g.anchor(Anchor::Anchor4)
                 .distance_squared(h.anchor(Anchor::Anchor4))
-                / a.size()
                 < 0.01
         );
 
@@ -255,7 +221,6 @@ impl SuperSpectre {
         level: usize,
         anchor_point: Vec2,
         anchor: Anchor,
-        size: f32,
         angle: impl Into<Angle>,
     ) -> Self {
         let angle: Angle = angle.into();
@@ -264,7 +229,7 @@ impl SuperSpectre {
             match anchor {
                 Anchor::Anchor1 => {
                     // G3
-                    let g = Spectre::new_with_anchor(anchor_point, Anchor::Anchor3, size, angle);
+                    let g = Spectre::new_with_anchor(anchor_point, Anchor::Anchor3, angle);
                     let h = g.adjacent_spectre(Anchor::Anchor4, Anchor::Anchor4);
                     let a = h.adjacent_spectre(Anchor::Anchor1, Anchor::Anchor1);
                     let b = a.adjacent_spectre(Anchor::Anchor3, Anchor::Anchor1);
@@ -277,7 +242,7 @@ impl SuperSpectre {
                 }
                 Anchor::Anchor2 => {
                     // D2
-                    let d = Spectre::new_with_anchor(anchor_point, Anchor::Anchor2, size, angle);
+                    let d = Spectre::new_with_anchor(anchor_point, Anchor::Anchor2, angle);
                     let e = d.adjacent_spectre(Anchor::Anchor3, Anchor::Anchor1);
                     let f = e.adjacent_spectre(Anchor::Anchor4, Anchor::Anchor2);
                     let g = f.adjacent_spectre(Anchor::Anchor3, Anchor::Anchor1);
@@ -290,7 +255,7 @@ impl SuperSpectre {
                 }
                 Anchor::Anchor3 => {
                     // B3
-                    let b = Spectre::new_with_anchor(anchor_point, Anchor::Anchor3, size, angle);
+                    let b = Spectre::new_with_anchor(anchor_point, Anchor::Anchor3, angle);
                     let c = b.adjacent_spectre(Anchor::Anchor4, Anchor::Anchor2);
                     let d = c.adjacent_spectre(Anchor::Anchor3, Anchor::Anchor1);
                     let e = d.adjacent_spectre(Anchor::Anchor3, Anchor::Anchor1);
@@ -303,7 +268,7 @@ impl SuperSpectre {
                 }
                 Anchor::Anchor4 => {
                     // A2
-                    let a = Spectre::new_with_anchor(anchor_point, Anchor::Anchor2, size, angle);
+                    let a = Spectre::new_with_anchor(anchor_point, Anchor::Anchor2, angle);
                     let b = a.adjacent_spectre(Anchor::Anchor3, Anchor::Anchor1);
                     let c = b.adjacent_spectre(Anchor::Anchor4, Anchor::Anchor2);
                     let d = c.adjacent_spectre(Anchor::Anchor3, Anchor::Anchor1);
@@ -323,7 +288,6 @@ impl SuperSpectre {
                         level - 1,
                         anchor_point,
                         Anchor::Anchor3,
-                        size,
                         angle,
                     );
                     let f = g.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
@@ -342,7 +306,6 @@ impl SuperSpectre {
                         level - 1,
                         anchor_point,
                         Anchor::Anchor2,
-                        size,
                         angle,
                     );
                     let c = d.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
@@ -360,7 +323,6 @@ impl SuperSpectre {
                         level - 1,
                         anchor_point,
                         Anchor::Anchor3,
-                        size,
                         angle,
                     );
                     let a = b.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
@@ -378,7 +340,6 @@ impl SuperSpectre {
                         level - 1,
                         anchor_point,
                         Anchor::Anchor2,
-                        size,
                         angle,
                     );
                     let h = a.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor1);
@@ -400,7 +361,6 @@ impl SuperSpectre {
                         level - 1,
                         anchor_point,
                         Anchor::Anchor3,
-                        size,
                         angle,
                     );
                     let h = g.adjacent_super_spectre(Anchor::Anchor4, Anchor::Anchor4);
@@ -418,7 +378,6 @@ impl SuperSpectre {
                         level - 1,
                         anchor_point,
                         Anchor::Anchor2,
-                        size,
                         angle,
                     );
                     let e = d.adjacent_super_spectre(Anchor::Anchor3, Anchor::Anchor1);
@@ -436,7 +395,6 @@ impl SuperSpectre {
                         level - 1,
                         anchor_point,
                         Anchor::Anchor3,
-                        size,
                         angle,
                     );
                     let c = b.adjacent_super_spectre(Anchor::Anchor4, Anchor::Anchor2);
@@ -454,7 +412,6 @@ impl SuperSpectre {
                         level - 1,
                         anchor_point,
                         Anchor::Anchor2,
-                        size,
                         angle,
                     );
                     let b = a.adjacent_super_spectre(Anchor::Anchor3, Anchor::Anchor1);
@@ -477,13 +434,7 @@ impl SuperSpectre {
             self.edge_direction(to_anchor) - self.prev_edge_direction(to_anchor).opposite();
         let angle = self.edge_direction(from_anchor) + rotation;
 
-        SuperSpectre::new_with_anchor(
-            self.level,
-            self.anchor(from_anchor),
-            to_anchor,
-            self.size(),
-            angle,
-        )
+        SuperSpectre::new_with_anchor(self.level, self.anchor(from_anchor), to_anchor, angle)
     }
 
     fn into_super_mystic(self) -> SuperMystic {
@@ -500,9 +451,6 @@ impl SuperSpectre {
 }
 
 impl SpectreLike for Spectre {
-    fn size(&self) -> f32 {
-        self.size
-    }
     fn anchor(&self, anchor: Anchor) -> Vec2 {
         self.anchor(anchor)
     }
@@ -521,9 +469,6 @@ impl SpectreLike for Spectre {
 }
 
 impl SpectreLike for SuperSpectre {
-    fn size(&self) -> f32 {
-        self.a.size()
-    }
     fn anchor(&self, anchor: Anchor) -> Vec2 {
         match anchor {
             Anchor::Anchor1 => self.g.anchor(Anchor::Anchor3),
@@ -581,9 +526,6 @@ pub struct SuperMystic {
 }
 
 impl MysticLike for Mystic {
-    fn size(&self) -> f32 {
-        self.a.size
-    }
     fn anchor(&self, anchor: Anchor) -> Vec2 {
         self.a.anchor(anchor)
     }
@@ -593,9 +535,6 @@ impl MysticLike for Mystic {
 }
 
 impl MysticLike for SuperMystic {
-    fn size(&self) -> f32 {
-        self.a.size()
-    }
     fn anchor(&self, anchor: Anchor) -> Vec2 {
         match anchor {
             Anchor::Anchor1 => self.g.anchor(Anchor::Anchor3),
