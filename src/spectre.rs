@@ -82,13 +82,14 @@ impl Spectre {
     }
 
     /// アンカーから出る辺の方向を取得する
-    fn edge_direction(anchor: Anchor) -> Angle {
-        Self::DIRECTIONS[anchor.index()]
+    pub fn edge_direction(&self, anchor: Anchor) -> Angle {
+        Self::DIRECTIONS[anchor.index()] + self.angle
     }
 
     /// アンカーに入る辺の方向を取得する
-    fn prev_edge_direction(anchor: Anchor) -> Angle {
+    pub fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
         Self::DIRECTIONS[(anchor.index() + Self::VERTEX_COUNT - 1) % Self::VERTEX_COUNT]
+            + self.angle
     }
 
     /// 指定されたアンカー同士を接続した新しいSpectreを生成する
@@ -138,31 +139,48 @@ pub struct Mystic {
     b: Spectre,
 }
 
+impl Mystic {
+    pub fn anchor(&self, anchor: Anchor) -> Vec2 {
+        self.a.anchor(anchor)
+    }
+    pub fn spectres(&self) -> impl Iterator<Item = &Spectre> {
+        std::iter::once(&self.a).chain(std::iter::once(&self.b))
+    }
+}
+
 pub struct SuperSpectre {
-    a: Box<dyn SpectreLike>,
-    b: Box<dyn SpectreLike>,
-    c: Box<dyn SpectreLike>,
-    d: Box<dyn SpectreLike>,
-    e: Box<dyn SpectreLike>,
-    f: Box<dyn SpectreLike>,
-    g: Box<dyn SpectreLike>,
-    h: Box<dyn MysticLike>,
+    a: SpectreLike,
+    b: SpectreLike,
+    c: SpectreLike,
+    d: SpectreLike,
+    e: SpectreLike,
+    f: SpectreLike,
+    g: SpectreLike,
+    h: MysticLike,
     level: usize,
 }
 
 impl SuperSpectre {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        a: impl SpectreLike + 'static,
-        b: impl SpectreLike + 'static,
-        c: impl SpectreLike + 'static,
-        d: impl SpectreLike + 'static,
-        e: impl SpectreLike + 'static,
-        f: impl SpectreLike + 'static,
-        g: impl SpectreLike + 'static,
-        h: impl MysticLike + 'static,
+        a: impl Into<SpectreLike>,
+        b: impl Into<SpectreLike>,
+        c: impl Into<SpectreLike>,
+        d: impl Into<SpectreLike>,
+        e: impl Into<SpectreLike>,
+        f: impl Into<SpectreLike>,
+        g: impl Into<SpectreLike>,
+        h: impl Into<MysticLike>,
         level: usize,
     ) -> Self {
+        let a: SpectreLike = a.into();
+        let b: SpectreLike = b.into();
+        let c: SpectreLike = c.into();
+        let d: SpectreLike = d.into();
+        let e: SpectreLike = e.into();
+        let f: SpectreLike = f.into();
+        let g: SpectreLike = g.into();
+        let h: MysticLike = h.into();
         assert!(
             h.anchor(Anchor::Anchor1)
                 .distance_squared(a.anchor(Anchor::Anchor1))
@@ -205,14 +223,14 @@ impl SuperSpectre {
         );
 
         Self {
-            a: Box::new(a),
-            b: Box::new(b),
-            c: Box::new(c),
-            d: Box::new(d),
-            e: Box::new(e),
-            f: Box::new(f),
-            g: Box::new(g),
-            h: Box::new(h),
+            a,
+            b,
+            c,
+            d,
+            e,
+            f,
+            g,
+            h,
             level,
         }
     }
@@ -448,28 +466,8 @@ impl SuperSpectre {
             h: self.h,
         }
     }
-}
 
-impl SpectreLike for Spectre {
-    fn anchor(&self, anchor: Anchor) -> Vec2 {
-        self.anchor(anchor)
-    }
-
-    fn edge_direction(&self, anchor: Anchor) -> Angle {
-        Spectre::edge_direction(anchor) + self.angle
-    }
-
-    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
-        Spectre::prev_edge_direction(anchor) + self.angle
-    }
-
-    fn spectres(&self) -> Box<dyn Iterator<Item = &Spectre> + '_> {
-        Box::new(std::iter::once(self))
-    }
-}
-
-impl SpectreLike for SuperSpectre {
-    fn anchor(&self, anchor: Anchor) -> Vec2 {
+    pub fn anchor(&self, anchor: Anchor) -> Vec2 {
         match anchor {
             Anchor::Anchor1 => self.g.anchor(Anchor::Anchor3),
             Anchor::Anchor2 => self.d.anchor(Anchor::Anchor2),
@@ -478,7 +476,7 @@ impl SpectreLike for SuperSpectre {
         }
     }
 
-    fn edge_direction(&self, anchor: Anchor) -> Angle {
+    pub fn edge_direction(&self, anchor: Anchor) -> Angle {
         match anchor {
             Anchor::Anchor1 => self.g.edge_direction(Anchor::Anchor3),
             Anchor::Anchor2 => self.d.edge_direction(Anchor::Anchor2),
@@ -487,7 +485,7 @@ impl SpectreLike for SuperSpectre {
         }
     }
 
-    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
+    pub fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
         match anchor {
             Anchor::Anchor1 => self.g.prev_edge_direction(Anchor::Anchor3),
             Anchor::Anchor2 => self.d.prev_edge_direction(Anchor::Anchor2),
@@ -496,46 +494,34 @@ impl SpectreLike for SuperSpectre {
         }
     }
 
-    fn spectres(&self) -> Box<dyn Iterator<Item = &Spectre> + '_> {
-        Box::new(
-            vec![
-                self.a.spectres(),
-                self.b.spectres(),
-                self.c.spectres(),
-                self.d.spectres(),
-                self.e.spectres(),
-                self.f.spectres(),
-                self.g.spectres(),
-                self.h.spectres(),
-            ]
-            .into_iter()
-            .flatten(),
-        )
+    pub fn spectres(&self) -> impl Iterator<Item = &Spectre> {
+        vec![
+            self.a.spectres(),
+            self.b.spectres(),
+            self.c.spectres(),
+            self.d.spectres(),
+            self.e.spectres(),
+            self.f.spectres(),
+            self.g.spectres(),
+            self.h.spectres(),
+        ]
+        .into_iter()
+        .flatten()
     }
 }
-
 pub struct SuperMystic {
-    a: Box<dyn SpectreLike>,
-    b: Box<dyn SpectreLike>,
-    c: Box<dyn SpectreLike>,
-    d: Box<dyn SpectreLike>,
+    a: SpectreLike,
+    b: SpectreLike,
+    c: SpectreLike,
+    d: SpectreLike,
 
-    f: Box<dyn SpectreLike>,
-    g: Box<dyn SpectreLike>,
-    h: Box<dyn MysticLike>,
+    f: SpectreLike,
+    g: SpectreLike,
+    h: MysticLike,
 }
 
-impl MysticLike for Mystic {
-    fn anchor(&self, anchor: Anchor) -> Vec2 {
-        self.a.anchor(anchor)
-    }
-    fn spectres(&self) -> Box<dyn Iterator<Item = &Spectre> + '_> {
-        Box::new(std::iter::once(&self.a).chain(std::iter::once(&self.b)))
-    }
-}
-
-impl MysticLike for SuperMystic {
-    fn anchor(&self, anchor: Anchor) -> Vec2 {
+impl SuperMystic {
+    pub fn anchor(&self, anchor: Anchor) -> Vec2 {
         match anchor {
             Anchor::Anchor1 => self.g.anchor(Anchor::Anchor3),
             Anchor::Anchor2 => self.d.anchor(Anchor::Anchor2),
@@ -544,19 +530,17 @@ impl MysticLike for SuperMystic {
         }
     }
 
-    fn spectres(&self) -> Box<dyn Iterator<Item = &Spectre> + '_> {
-        Box::new(
-            vec![
-                self.a.spectres(),
-                self.b.spectres(),
-                self.c.spectres(),
-                self.d.spectres(),
-                self.f.spectres(),
-                self.g.spectres(),
-                self.h.spectres(),
-            ]
-            .into_iter()
-            .flatten(),
-        )
+    pub fn spectres(&self) -> impl Iterator<Item = &Spectre> {
+        vec![
+            self.a.spectres(),
+            self.b.spectres(),
+            self.c.spectres(),
+            self.d.spectres(),
+            self.f.spectres(),
+            self.g.spectres(),
+            self.h.spectres(),
+        ]
+        .into_iter()
+        .flatten()
     }
 }

@@ -4,7 +4,6 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_prototype_lyon::prelude::*;
 use once_cell::unsync::Lazy;
 use spectre::{Spectre, SuperSpectre};
-use spectre_like::SpectreLike as _;
 
 mod anchor;
 mod angle;
