@@ -2,7 +2,8 @@ use anchor::Anchor;
 use angle::Angle;
 use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_prototype_lyon::prelude::*;
-use spectre::Spectre;
+use once_cell::unsync::Lazy;
+use spectre::{Spectre, SuperSpectre};
 use spectre_like::SpectreLike as _;
 
 mod anchor;
@@ -38,59 +39,55 @@ fn setup_camera(mut commands: Commands) {
 /// - 彩度（S）：80%で固定
 /// - 明度（V）：80%で固定
 fn spawn_tile(commands: &mut Commands, spectre: &Spectre) {
+    // TODO: この部分は定数にできるはず
     // タイルの頂点から多角形を生成
-    let polygon = shapes::Polygon {
-        points: spectre.points.to_vec(),
+    let polygon: Lazy<shapes::Polygon> = Lazy::new(|| shapes::Polygon {
+        points: Spectre::new_with_anchor(Vec2::ZERO, Anchor::Anchor1, 1.0, Angle::ZERO)
+            .all_points(),
         closed: true,
-    };
+    });
+
+    let position = (spectre.anchor(Anchor::Anchor1)
+        + spectre.anchor(Anchor::Anchor2)
+        + spectre.anchor(Anchor::Anchor3)
+        + spectre.anchor(Anchor::Anchor4))
+        / 4.0;
 
     // angleから色相を計算（30度ごと）
     let hue = spectre.angle.value() as f32 * 30.0;
-    let saturation =
-        (spectre.anchor(Anchor::Anchor1).length() / spectre.size * 2.0).sin() * 0.25 + 0.75;
+    // positionら彩度を計算（0.333-1.0）
+    let saturation = ((0.333 * position.length() / spectre.size).sin()
+        + (0.5 * position.x / spectre.size).sin()
+        + (0.666 * position.y / spectre.size).sin())
+        * 0.111
+        + 0.666;
     println!(
         "angle: {}, length: {}, hue: {}, saturation: {}",
         spectre.angle.value(),
-        spectre.anchor(Anchor::Anchor1).length(),
+        position.length(),
         hue,
         saturation
     );
     // HSVからRGBに変換（彩度80%、明度80%）
     let color = Color::hsl(hue, saturation, 0.8);
 
+    let transform = Transform::from_translation(Vec3::new(
+        spectre.anchor(Anchor::Anchor1).x,
+        spectre.anchor(Anchor::Anchor1).y,
+        0.0,
+    ))
+    .with_scale(Vec3::splat(spectre.size))
+    .with_rotation(Quat::from_rotation_z(spectre.angle.to_radians()));
+
     // タイルのエンティティを生成
     commands.spawn((
         ShapeBundle {
-            path: GeometryBuilder::build_as(&polygon),
+            path: GeometryBuilder::build_as(&*polygon),
+            transform,
             ..default()
         },
         Fill::color(color),
     ));
-}
-
-/// タイルを生成して配置する
-///
-/// # Arguments
-/// * `commands` - Bevyのコマンドバッファ
-/// * `tiles` - 生成済みのタイル配列
-/// * `connections` - タイルの接続情報：(接続元タイルのインデックス, 接続元アンカー, 接続先アンカー)
-/// * `start_index` - 生成するタイルの開始インデックス（色分け用）
-///
-/// # Details
-/// 指定された接続情報に基づいて新しいタイルを生成し、既存のタイルに接続します。
-/// 生成したタイルは`tiles`に追加され、同時に描画用のエンティティも生成されます。
-/// `start_index`は色分けのために使用され、タイルの階層を視覚的に表現します。
-fn place_connected_tiles(
-    commands: &mut Commands,
-    tiles: &mut Vec<Spectre>,
-    connections: &[(usize, Anchor, Anchor)],
-) {
-    for (from_idx, from_anchor, to_anchor) in connections {
-        let tile = tiles[*from_idx].adjacent_spectre(*from_anchor, *to_anchor);
-        let tile_clone = tile.clone();
-        tiles.push(tile);
-        spawn_tile(commands, &tile_clone);
-    }
 }
 
 /// タイルを配置するシステム
@@ -103,31 +100,95 @@ fn place_connected_tiles(
 /// 4. 中心タイルを最後に再描画して最前面に表示
 fn setup_tiles(mut commands: Commands) {
     // タイルのサイズを設定
-    const TILE_SIZE: f32 = 40.0;
+    const TILE_SIZE: f32 = 15.0;
 
-    // 中心となるタイルを生成（原点に配置、角度0度）
-    let center =
-        Spectre::new_with_anchor(Vec2::new(0.0, 0.0), Anchor::Anchor1, TILE_SIZE, Angle::ZERO)
-            .to_mystic_like();
+    // let mystic = SuperSpectre::new_with_anchor(
+    //     1,
+    //     Vec2::new(0.0, 0.0),
+    //     Anchor::Anchor1,
+    //     TILE_SIZE,
+    //     Angle::ZERO,
+    // )
+    // .to_mystic_like();
+    // let g_cluster = SuperSpectre::new_with_anchor(
+    //     1,
+    //     mystic.anchor(Anchor::Anchor4),
+    //     Anchor::Anchor4,
+    //     TILE_SIZE,
+    //     Angle::new(0),
+    // );
+    // let f_cluster = SuperSpectre::new_with_anchor(
+    //     1,
+    //     g_cluster.anchor(Anchor::Anchor1),
+    //     Anchor::Anchor3,
+    //     TILE_SIZE,
+    //     Angle::new(4),
+    // );
+    // let e_cluster = SuperSpectre::new_with_anchor(
+    //     1,
+    //     f_cluster.anchor(Anchor::Anchor2),
+    //     Anchor::Anchor4,
+    //     TILE_SIZE,
+    //     Angle::new(2),
+    // );
+    // let d_cluster = SuperSpectre::new_with_anchor(
+    //     1,
+    //     e_cluster.anchor(Anchor::Anchor1),
+    //     Anchor::Anchor3,
+    //     TILE_SIZE,
+    //     Angle::new(6),
+    // );
+    // let c_cluster = SuperSpectre::new_with_anchor(
+    //     1,
+    //     d_cluster.anchor(Anchor::Anchor1),
+    //     Anchor::Anchor3,
+    //     TILE_SIZE,
+    //     Angle::new(8),
+    // );
+    // let b_cluster = SuperSpectre::new_with_anchor(
+    //     1,
+    //     c_cluster.anchor(Anchor::Anchor2),
+    //     Anchor::Anchor4,
+    //     TILE_SIZE,
+    //     Angle::new(6),
+    // );
+    // let a_cluster = SuperSpectre::new_with_anchor(
+    //     1,
+    //     b_cluster.anchor(Anchor::Anchor1),
+    //     Anchor::Anchor3,
+    //     TILE_SIZE,
+    //     Angle::new(10),
+    // );
 
-    let center_spectres = center.spectres();
-    for spectre in center_spectres {
+    // for spectre in mystic.spectres() {
+    //     spawn_tile(&mut commands, spectre);
+    // }
+    // for spectre in g_cluster.spectres() {
+    //     spawn_tile(&mut commands, spectre);
+    // }
+    // for spectre in f_cluster.spectres() {
+    //     spawn_tile(&mut commands, spectre);
+    // }
+    // for spectre in e_cluster.spectres() {
+    //     spawn_tile(&mut commands, spectre);
+    // }
+    // for spectre in d_cluster.spectres() {
+    //     spawn_tile(&mut commands, spectre);
+    // }
+    // for spectre in c_cluster.spectres() {
+    //     spawn_tile(&mut commands, spectre);
+    // }
+    // for spectre in b_cluster.spectres() {
+    //     spawn_tile(&mut commands, spectre);
+    // }
+    // for spectre in a_cluster.spectres() {
+    //     spawn_tile(&mut commands, spectre);
+    // }
+    let cluster =
+        SuperSpectre::new_with_anchor(2, Vec2::ZERO, Anchor::Anchor1, TILE_SIZE, Angle::ZERO);
+    for spectre in cluster.spectres() {
         spawn_tile(&mut commands, spectre);
     }
-    let mut tiles = vec![center.spectres()[0].clone()];
-
-    // 1段目：中心タイルから4方向に接続
-    let inner_connections = [
-        // (接続元インデックス, 接続元アンカー, 接続先アンカー)
-        (0, Anchor::Anchor1, Anchor::Anchor1), // A
-        (1, Anchor::Anchor3, Anchor::Anchor1), // F
-        (2, Anchor::Anchor4, Anchor::Anchor2), // B
-        (3, Anchor::Anchor3, Anchor::Anchor1), // C
-        (4, Anchor::Anchor3, Anchor::Anchor1), // G
-        (5, Anchor::Anchor4, Anchor::Anchor2), // D
-        (6, Anchor::Anchor3, Anchor::Anchor1), // E
-    ];
-    place_connected_tiles(&mut commands, &mut tiles, &inner_connections);
 }
 
 /// カメラの移動を制御するコンポーネント

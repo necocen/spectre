@@ -11,6 +11,10 @@ pub trait SpectreLike {
     where
         Self: Sized;
     fn spectres(&self) -> Vec<&Spectre>;
+
+    fn adjacent_spectre_like(&self, from_anchor: Anchor, to_anchor: Anchor) -> Box<dyn SpectreLike>
+    where
+        Self: Sized;
 }
 
 pub trait MysticLike {
