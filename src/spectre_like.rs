@@ -7,14 +7,7 @@ pub trait SpectreLike {
     fn anchor(&self, anchor: Anchor) -> Vec2;
     fn edge_direction(&self, anchor: Anchor) -> Angle;
     fn prev_edge_direction(&self, anchor: Anchor) -> Angle;
-    fn to_mystic_like(self) -> Box<dyn MysticLike>
-    where
-        Self: Sized;
     fn spectres(&self) -> Vec<&Spectre>;
-
-    fn adjacent_spectre_like(&self, from_anchor: Anchor, to_anchor: Anchor) -> Box<dyn SpectreLike>
-    where
-        Self: Sized;
 }
 
 pub trait MysticLike {

@@ -10,8 +10,6 @@ pub struct Angle(u8);
 impl Angle {
     /// 角度0度
     pub const ZERO: Self = Self(0);
-    /// 反対方向（180度）
-    pub const OPPOSITE: Self = Self(6);
 
     /// 角度を正規化して新しいAngleを生成
     pub const fn new(value: i32) -> Self {
@@ -26,6 +24,10 @@ impl Angle {
     /// ラジアンに変換
     pub fn to_radians(self) -> f32 {
         self.0 as f32 * PI / 6.0
+    }
+
+    pub fn opposite(self) -> Self {
+        Self::new(self.0 as i32 + 6)
     }
 }
 
@@ -44,6 +46,14 @@ impl std::ops::Sub for Angle {
 
     fn sub(self, rhs: Self) -> Self {
         Self::new(self.0 as i32 - rhs.0 as i32)
+    }
+}
+
+impl std::ops::Neg for Angle {
+    type Output = Self;
+
+    fn neg(self) -> Self {
+        Self::new(-(self.0 as i32))
     }
 }
 

@@ -91,101 +91,12 @@ fn spawn_tile(commands: &mut Commands, spectre: &Spectre) {
 }
 
 /// タイルを配置するシステム
-///
-/// # Details
-/// タイルを以下の手順で配置します：
-/// 1. 中心タイル：原点に配置（角度0度）
-/// 2. 1段目のタイル：中心タイルから4方向に接続
-/// 3. 2段目のタイル：1段目のタイルから外側に接続
-/// 4. 中心タイルを最後に再描画して最前面に表示
 fn setup_tiles(mut commands: Commands) {
     // タイルのサイズを設定
-    const TILE_SIZE: f32 = 15.0;
+    const TILE_SIZE: f32 = 10.0;
 
-    // let mystic = SuperSpectre::new_with_anchor(
-    //     1,
-    //     Vec2::new(0.0, 0.0),
-    //     Anchor::Anchor1,
-    //     TILE_SIZE,
-    //     Angle::ZERO,
-    // )
-    // .to_mystic_like();
-    // let g_cluster = SuperSpectre::new_with_anchor(
-    //     1,
-    //     mystic.anchor(Anchor::Anchor4),
-    //     Anchor::Anchor4,
-    //     TILE_SIZE,
-    //     Angle::new(0),
-    // );
-    // let f_cluster = SuperSpectre::new_with_anchor(
-    //     1,
-    //     g_cluster.anchor(Anchor::Anchor1),
-    //     Anchor::Anchor3,
-    //     TILE_SIZE,
-    //     Angle::new(4),
-    // );
-    // let e_cluster = SuperSpectre::new_with_anchor(
-    //     1,
-    //     f_cluster.anchor(Anchor::Anchor2),
-    //     Anchor::Anchor4,
-    //     TILE_SIZE,
-    //     Angle::new(2),
-    // );
-    // let d_cluster = SuperSpectre::new_with_anchor(
-    //     1,
-    //     e_cluster.anchor(Anchor::Anchor1),
-    //     Anchor::Anchor3,
-    //     TILE_SIZE,
-    //     Angle::new(6),
-    // );
-    // let c_cluster = SuperSpectre::new_with_anchor(
-    //     1,
-    //     d_cluster.anchor(Anchor::Anchor1),
-    //     Anchor::Anchor3,
-    //     TILE_SIZE,
-    //     Angle::new(8),
-    // );
-    // let b_cluster = SuperSpectre::new_with_anchor(
-    //     1,
-    //     c_cluster.anchor(Anchor::Anchor2),
-    //     Anchor::Anchor4,
-    //     TILE_SIZE,
-    //     Angle::new(6),
-    // );
-    // let a_cluster = SuperSpectre::new_with_anchor(
-    //     1,
-    //     b_cluster.anchor(Anchor::Anchor1),
-    //     Anchor::Anchor3,
-    //     TILE_SIZE,
-    //     Angle::new(10),
-    // );
-
-    // for spectre in mystic.spectres() {
-    //     spawn_tile(&mut commands, spectre);
-    // }
-    // for spectre in g_cluster.spectres() {
-    //     spawn_tile(&mut commands, spectre);
-    // }
-    // for spectre in f_cluster.spectres() {
-    //     spawn_tile(&mut commands, spectre);
-    // }
-    // for spectre in e_cluster.spectres() {
-    //     spawn_tile(&mut commands, spectre);
-    // }
-    // for spectre in d_cluster.spectres() {
-    //     spawn_tile(&mut commands, spectre);
-    // }
-    // for spectre in c_cluster.spectres() {
-    //     spawn_tile(&mut commands, spectre);
-    // }
-    // for spectre in b_cluster.spectres() {
-    //     spawn_tile(&mut commands, spectre);
-    // }
-    // for spectre in a_cluster.spectres() {
-    //     spawn_tile(&mut commands, spectre);
-    // }
     let cluster =
-        SuperSpectre::new_with_anchor(2, Vec2::ZERO, Anchor::Anchor1, TILE_SIZE, Angle::ZERO);
+        SuperSpectre::new_with_anchor(5, Vec2::ZERO, Anchor::Anchor1, TILE_SIZE, Angle::ZERO);
     for spectre in cluster.spectres() {
         spawn_tile(&mut commands, spectre);
     }
