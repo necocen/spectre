@@ -1,6 +1,6 @@
 use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 
-use crate::angle::Angle;
+use super::Angle;
 
 /// 正六角形のタイリングに適した実数値を表現する型
 /// i/2 + j*√3/2 の形で値を保持する

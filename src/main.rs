@@ -1,28 +1,20 @@
-use anchor::Anchor;
-use angle::Angle;
 use bevy::{
     asset::RenderAssetUsages,
     prelude::*,
     render::{mesh::PrimitiveTopology, view::NoFrustumCulling},
 };
-use geometry::Geometry;
-use hex_vec::HexVec;
+use geometry::{Anchor, Geometry as _, Spectre, SuperSpectre};
 use instancing::{CustomMaterialPlugin, InstanceData, InstanceMaterialData};
 use lyon_tessellation::{
     geom::Point, geometry_builder::simple_builder, path::Path, FillOptions, FillTessellator,
     VertexBuffers,
 };
-use spectre::{Spectre, SuperSpectre};
+use utils::{Angle, HexVec};
 
-mod anchor;
-mod angle;
 mod camera;
 mod geometry;
-mod hex_value;
-mod hex_vec;
 mod instancing;
-mod spectre;
-mod spectre_like;
+mod utils;
 
 fn main() {
     App::new()

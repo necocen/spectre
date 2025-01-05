@@ -1,6 +1,6 @@
 use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 
-use crate::hex_value::HexValue;
+use super::HexValue;
 
 /// 正六角形のタイリングに適した2次元ベクトル
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

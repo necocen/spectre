@@ -1,10 +1,6 @@
-use crate::{
-    anchor::Anchor,
-    angle::Angle,
-    geometry::Geometry,
-    hex_vec::HexVec,
-    spectre::{Mystic, Spectre, SuperMystic, SuperSpectre},
-};
+use crate::utils::{Angle, HexVec};
+
+use super::{Anchor, Geometry, Mystic, Spectre, SuperMystic, SuperSpectre};
 
 pub enum SpectreLike {
     Spectre(Spectre),
