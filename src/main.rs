@@ -21,7 +21,14 @@ mod spectre_like;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                // Web版はブラウザ全体に表示
+                fit_canvas_to_parent: true,
+                ..default()
+            }),
+            ..default()
+        }))
         .add_plugins(CustomMaterialPlugin)
         .add_systems(Startup, (camera::setup_camera, setup_tiles))
         .add_systems(Update, camera::camera_movement_system)
@@ -31,7 +38,7 @@ fn main() {
 /// タイルを配置するシステム
 fn setup_tiles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let mesh = setup_mesh(&mut meshes);
-    let cluster = SuperSpectre::new_with_anchor(2, Vec2::ZERO, Anchor::Anchor1, Angle::ZERO);
+    let cluster = SuperSpectre::new_with_anchor(7, Vec2::ZERO, Anchor::Anchor1, Angle::ZERO);
 
     let instance_data = cluster.spectres().map(to_instance_data).collect::<Vec<_>>();
     println!("counter: {}", instance_data.len());
@@ -58,7 +65,7 @@ fn to_instance_data(spectre: &Spectre) -> InstanceData {
     // positionら彩度を計算（0.333-1.0）
     let saturation = (1.166 * position.x).sin() * 0.333 + 0.666;
     // HSVからRGBに変換（彩度80%、明度80%）
-    let color = Color::hsl(hue, saturation, 0.8).with_alpha(1.0);
+    let color = Color::hsl(hue, saturation, 0.7).with_alpha(1.0);
 
     InstanceData {
         position: spectre.anchor(Anchor::Anchor1).extend(0.0),
