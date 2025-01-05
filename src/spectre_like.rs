@@ -1,8 +1,8 @@
-use bevy::math::Vec2;
-
 use crate::{
     anchor::Anchor,
     angle::Angle,
+    geometry::Geometry,
+    hex_vec::HexVec,
     spectre::{Mystic, Spectre, SuperMystic, SuperSpectre},
 };
 
@@ -11,28 +11,30 @@ pub enum SpectreLike {
     SuperSpectre(Box<SuperSpectre>),
 }
 
-impl SpectreLike {
-    pub fn anchor(&self, anchor: Anchor) -> Vec2 {
+impl Geometry for SpectreLike {
+    fn anchor(&self, anchor: Anchor) -> HexVec {
         match self {
             SpectreLike::Spectre(spectre) => spectre.anchor(anchor),
             SpectreLike::SuperSpectre(super_spectre) => super_spectre.anchor(anchor),
         }
     }
 
-    pub fn edge_direction(&self, anchor: Anchor) -> Angle {
+    fn edge_direction(&self, anchor: Anchor) -> Angle {
         match self {
             SpectreLike::Spectre(spectre) => spectre.edge_direction(anchor),
             SpectreLike::SuperSpectre(super_spectre) => super_spectre.edge_direction(anchor),
         }
     }
 
-    pub fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
+    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
         match self {
             SpectreLike::Spectre(spectre) => spectre.prev_edge_direction(anchor),
             SpectreLike::SuperSpectre(super_spectre) => super_spectre.prev_edge_direction(anchor),
         }
     }
+}
 
+impl SpectreLike {
     pub fn spectres(&self) -> Box<dyn Iterator<Item = &Spectre> + '_> {
         match self {
             SpectreLike::Spectre(spectre) => Box::new(std::iter::once(spectre)),
@@ -58,14 +60,30 @@ pub enum MysticLike {
     SuperMystic(Box<SuperMystic>),
 }
 
-impl MysticLike {
-    pub fn anchor(&self, anchor: Anchor) -> Vec2 {
+impl Geometry for MysticLike {
+    fn anchor(&self, anchor: Anchor) -> HexVec {
         match self {
             MysticLike::Mystic(mystic) => mystic.anchor(anchor),
             MysticLike::SuperMystic(super_mystic) => super_mystic.anchor(anchor),
         }
     }
 
+    fn edge_direction(&self, anchor: Anchor) -> Angle {
+        match self {
+            MysticLike::Mystic(mystic) => mystic.edge_direction(anchor),
+            MysticLike::SuperMystic(super_mystic) => super_mystic.edge_direction(anchor),
+        }
+    }
+
+    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
+        match self {
+            MysticLike::Mystic(mystic) => mystic.prev_edge_direction(anchor),
+            MysticLike::SuperMystic(super_mystic) => super_mystic.prev_edge_direction(anchor),
+        }
+    }
+}
+
+impl MysticLike {
     pub fn spectres(&self) -> Box<dyn Iterator<Item = &Spectre> + '_> {
         match self {
             MysticLike::Mystic(mystic) => Box::new(mystic.spectres()),

@@ -5,6 +5,8 @@ use bevy::{
     prelude::*,
     render::{mesh::PrimitiveTopology, view::NoFrustumCulling},
 };
+use geometry::Geometry;
+use hex_vec::HexVec;
 use instancing::{CustomMaterialPlugin, InstanceData, InstanceMaterialData};
 use lyon_tessellation::{
     geom::Point, geometry_builder::simple_builder, path::Path, FillOptions, FillTessellator,
@@ -15,6 +17,9 @@ use spectre::{Spectre, SuperSpectre};
 mod anchor;
 mod angle;
 mod camera;
+mod geometry;
+mod hex_value;
+mod hex_vec;
 mod instancing;
 mod spectre;
 mod spectre_like;
@@ -38,7 +43,7 @@ fn main() {
 /// タイルを配置するシステム
 fn setup_tiles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let mesh = setup_mesh(&mut meshes);
-    let cluster = SuperSpectre::new_with_anchor(7, Vec2::ZERO, Anchor::Anchor1, Angle::ZERO);
+    let cluster = SuperSpectre::new_with_anchor(7, HexVec::ZERO, Anchor::Anchor1, Angle::ZERO);
 
     let instance_data = cluster.spectres().map(to_instance_data).collect::<Vec<_>>();
     println!("counter: {}", instance_data.len());
@@ -54,21 +59,27 @@ fn to_instance_data(spectre: &Spectre) -> InstanceData {
     // タイルのサイズを設定
     const TILE_SIZE: f32 = 10.0;
 
-    let position = (spectre.anchor(Anchor::Anchor1)
-        + spectre.anchor(Anchor::Anchor2)
-        + spectre.anchor(Anchor::Anchor3)
-        + spectre.anchor(Anchor::Anchor4))
-        / 4.0;
+    let position = {
+        let anchors = [
+            spectre.anchor(Anchor::Anchor1),
+            spectre.anchor(Anchor::Anchor2),
+            spectre.anchor(Anchor::Anchor3),
+            spectre.anchor(Anchor::Anchor4),
+        ];
+        let sum = anchors.into_iter().fold(HexVec::ZERO, |acc, p| acc + p);
+        sum.to_vec2() / 4.0
+    };
 
     // angleから色相を計算（30度ごと）
     let hue = spectre.angle.value() as f32 * 30.0;
-    // positionら彩度を計算（0.333-1.0）
-    let saturation = (1.166 * position.x).sin() * 0.333 + 0.666;
-    // HSVからRGBに変換（彩度80%、明度80%）
+    // positionから彩度を計算（0.333-1.0）
+    let saturation = f32::sin(1.166 * position.x) * 0.333 + 0.666;
+    // HSVからRGBに変換（明度70%）
     let color = Color::hsl(hue, saturation, 0.7).with_alpha(1.0);
 
+    let anchor_pos = spectre.anchor(Anchor::Anchor1).to_vec2();
     InstanceData {
-        position: spectre.anchor(Anchor::Anchor1).extend(0.0),
+        position: anchor_pos.extend(0.0),
         scale: TILE_SIZE,
         color: color.to_srgba().to_f32_array(),
         angle: spectre.angle.to_radians(),
@@ -77,9 +88,10 @@ fn to_instance_data(spectre: &Spectre) -> InstanceData {
 
 fn setup_mesh(meshes: &mut ResMut<Assets<Mesh>>) -> Handle<Mesh> {
     let mut path_builder = Path::builder();
-    let points = Spectre::new_with_anchor(Vec2::ZERO, Anchor::Anchor1, Angle::ZERO).all_points();
-    path_builder.begin(Point::new(points[0].x, points[0].y));
-    for point in points.iter().skip(1) {
+    let points = Spectre::new_with_anchor(HexVec::ZERO, Anchor::Anchor1, Angle::ZERO).all_points();
+    let points_vec2: Vec<Vec2> = points.iter().map(|p| p.to_vec2()).collect();
+    path_builder.begin(Point::new(points_vec2[0].x, points_vec2[0].y));
+    for point in points_vec2.iter().skip(1) {
         path_builder.line_to(Point::new(point.x, point.y));
     }
     path_builder.close();

@@ -1,8 +1,9 @@
-use bevy::math::Vec2;
-
 use crate::{
     anchor::Anchor,
     angle::Angle,
+    geometry::Geometry,
+    hex_value::HexValue,
+    hex_vec::HexVec,
     spectre_like::{MysticLike, SpectreLike},
 };
 
@@ -12,7 +13,22 @@ pub struct Spectre {
     /// アンカー1から反時計回りに進む辺の向く方向
     pub angle: Angle,
     /// アンカー1の座標
-    pub anchor1: Vec2,
+    pub anchor1: HexVec,
+}
+
+impl Geometry for Spectre {
+    fn anchor(&self, anchor: Anchor) -> HexVec {
+        self.points(anchor.index())
+    }
+
+    fn edge_direction(&self, anchor: Anchor) -> Angle {
+        Self::DIRECTIONS[anchor.index()] + self.angle
+    }
+
+    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
+        Self::DIRECTIONS[(anchor.index() + Self::VERTEX_COUNT - 1) % Self::VERTEX_COUNT]
+            + self.angle
+    }
 }
 
 impl Spectre {
@@ -37,15 +53,18 @@ impl Spectre {
     ];
 
     /// 指定されたアンカーを基準点としてタイルを生成する
-    pub fn new_with_anchor(anchor_point: Vec2, anchor: Anchor, angle: impl Into<Angle>) -> Self {
+    pub fn new_with_anchor(
+        anchor_point: impl Into<HexVec>,
+        anchor: Anchor,
+        angle: impl Into<Angle>,
+    ) -> Self {
         Self::new_with_anchor_at(anchor_point, anchor.index(), angle.into())
     }
 
     /// 指定された角度の方向ベクトルを計算する
-    fn direction_vector(angle: Angle, direction: Angle) -> Vec2 {
+    fn direction_vector(angle: Angle, direction: Angle) -> HexVec {
         let total_angle = angle + direction;
-        let rad = total_angle.to_radians();
-        Vec2::new(rad.cos(), rad.sin())
+        HexVec::new(HexValue::cos(total_angle), HexValue::sin(total_angle))
     }
 
     /// 指定されたアンカーを基準に点を配置する
@@ -55,8 +74,13 @@ impl Spectre {
     /// * `anchor_index` - アンカーのインデックス
     /// * `size` - 辺の長さ
     /// * `angle` - anchor_pointから出る辺の角度
-    fn new_with_anchor_at(anchor_point: Vec2, anchor_index: usize, angle: Angle) -> Self {
-        let mut points = [Vec2::ZERO; Self::VERTEX_COUNT];
+    fn new_with_anchor_at(
+        anchor_point: impl Into<HexVec>,
+        anchor_index: usize,
+        angle: Angle,
+    ) -> Self {
+        let mut points = [HexVec::ZERO; Self::VERTEX_COUNT];
+        let anchor_point = anchor_point.into();
         points[anchor_index] = anchor_point;
         let angle = angle - Self::DIRECTIONS[anchor_index];
 
@@ -72,24 +96,13 @@ impl Spectre {
     }
 
     /// アンカーより前方の点を配置する（反時計回り）
-    fn place_points_before(points: &mut [Vec2], start: Vec2, angle: Angle) {
+    fn place_points_before(points: &mut [HexVec], start: HexVec, angle: Angle) {
         let mut p = start;
         for (i, point) in points.iter_mut().enumerate().rev() {
             let dir = Self::direction_vector(angle, Self::DIRECTIONS[i]);
             p -= dir;
             *point = p;
         }
-    }
-
-    /// アンカーから出る辺の方向を取得する
-    pub fn edge_direction(&self, anchor: Anchor) -> Angle {
-        Self::DIRECTIONS[anchor.index()] + self.angle
-    }
-
-    /// アンカーに入る辺の方向を取得する
-    pub fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
-        Self::DIRECTIONS[(anchor.index() + Self::VERTEX_COUNT - 1) % Self::VERTEX_COUNT]
-            + self.angle
     }
 
     /// 指定されたアンカー同士を接続した新しいSpectreを生成する
@@ -109,11 +122,7 @@ impl Spectre {
         Self::new_with_anchor(self.points(from_anchor.index()), to_anchor, angle)
     }
 
-    pub fn anchor(&self, anchor: Anchor) -> Vec2 {
-        self.points(anchor.index())
-    }
-
-    fn points(&self, index: usize) -> Vec2 {
+    fn points(&self, index: usize) -> HexVec {
         // FIXME: memoizeしたほうがいい
         let mut p = self.anchor1;
         for i in 0..index {
@@ -123,7 +132,7 @@ impl Spectre {
         p
     }
 
-    pub fn all_points(&self) -> Vec<Vec2> {
+    pub fn all_points(&self) -> Vec<HexVec> {
         (0..Self::VERTEX_COUNT).map(|i| self.points(i)).collect()
     }
 
@@ -139,10 +148,21 @@ pub struct Mystic {
     b: Spectre,
 }
 
-impl Mystic {
-    pub fn anchor(&self, anchor: Anchor) -> Vec2 {
+impl Geometry for Mystic {
+    fn anchor(&self, anchor: Anchor) -> HexVec {
         self.a.anchor(anchor)
     }
+
+    fn edge_direction(&self, anchor: Anchor) -> Angle {
+        self.a.edge_direction(anchor)
+    }
+
+    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
+        self.a.prev_edge_direction(anchor)
+    }
+}
+
+impl Mystic {
     pub fn spectres(&self) -> impl Iterator<Item = &Spectre> {
         std::iter::once(&self.a).chain(std::iter::once(&self.b))
     }
@@ -158,6 +178,35 @@ pub struct SuperSpectre {
     g: SpectreLike,
     h: MysticLike,
     level: usize,
+}
+
+impl Geometry for SuperSpectre {
+    fn anchor(&self, anchor: Anchor) -> HexVec {
+        match anchor {
+            Anchor::Anchor1 => self.g.anchor(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.anchor(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.anchor(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.anchor(Anchor::Anchor2),
+        }
+    }
+
+    fn edge_direction(&self, anchor: Anchor) -> Angle {
+        match anchor {
+            Anchor::Anchor1 => self.g.edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.edge_direction(Anchor::Anchor2),
+        }
+    }
+
+    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
+        match anchor {
+            Anchor::Anchor1 => self.g.prev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.prev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.prev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.prev_edge_direction(Anchor::Anchor2),
+        }
+    }
 }
 
 impl SuperSpectre {
@@ -181,47 +230,14 @@ impl SuperSpectre {
         let f: SpectreLike = f.into();
         let g: SpectreLike = g.into();
         let h: MysticLike = h.into();
-        // assert!(
-        //     h.anchor(Anchor::Anchor1)
-        //         .distance_squared(a.anchor(Anchor::Anchor1))
-        //         < 0.01
-        // );
-        // assert!(
-        //     a.anchor(Anchor::Anchor3)
-        //         .distance_squared(b.anchor(Anchor::Anchor1))
-        //         < 0.01
-        // );
-        // assert!(
-        //     b.anchor(Anchor::Anchor4)
-        //         .distance_squared(c.anchor(Anchor::Anchor2))
-        //         < 0.01
-        // );
-        // assert!(
-        //     c.anchor(Anchor::Anchor3)
-        //         .distance_squared(d.anchor(Anchor::Anchor1))
-        //         < 0.01
-        // );
-        // assert!(
-        //     d.anchor(Anchor::Anchor3)
-        //         .distance_squared(e.anchor(Anchor::Anchor1))
-        //         < 0.01
-        // );
-        // assert!(
-        //     e.anchor(Anchor::Anchor4)
-        //         .distance_squared(f.anchor(Anchor::Anchor2))
-        //         < 0.01
-        // );
-        // assert!(
-        //     f.anchor(Anchor::Anchor3)
-        //         .distance_squared(g.anchor(Anchor::Anchor1))
-        //         < 0.01
-        // );
-        // assert!(
-        //     g.anchor(Anchor::Anchor4)
-        //         .distance_squared(h.anchor(Anchor::Anchor4))
-        //         < 0.01
-        // );
-
+        assert!(h.anchor(Anchor::Anchor1) == a.anchor(Anchor::Anchor1));
+        assert!(a.anchor(Anchor::Anchor3) == b.anchor(Anchor::Anchor1));
+        assert!(b.anchor(Anchor::Anchor4) == c.anchor(Anchor::Anchor2));
+        assert!(c.anchor(Anchor::Anchor3) == d.anchor(Anchor::Anchor1));
+        assert!(d.anchor(Anchor::Anchor3) == e.anchor(Anchor::Anchor1));
+        assert!(e.anchor(Anchor::Anchor4) == f.anchor(Anchor::Anchor2));
+        assert!(f.anchor(Anchor::Anchor3) == g.anchor(Anchor::Anchor1));
+        assert!(g.anchor(Anchor::Anchor4) == h.anchor(Anchor::Anchor4));
         Self {
             a,
             b,
@@ -237,7 +253,7 @@ impl SuperSpectre {
 
     pub fn new_with_anchor(
         level: usize,
-        anchor_point: Vec2,
+        anchor_point: impl Into<HexVec>,
         anchor: Anchor,
         angle: impl Into<Angle>,
     ) -> Self {
@@ -467,33 +483,6 @@ impl SuperSpectre {
         }
     }
 
-    pub fn anchor(&self, anchor: Anchor) -> Vec2 {
-        match anchor {
-            Anchor::Anchor1 => self.g.anchor(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.anchor(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.anchor(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.anchor(Anchor::Anchor2),
-        }
-    }
-
-    pub fn edge_direction(&self, anchor: Anchor) -> Angle {
-        match anchor {
-            Anchor::Anchor1 => self.g.edge_direction(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.edge_direction(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.edge_direction(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.edge_direction(Anchor::Anchor2),
-        }
-    }
-
-    pub fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
-        match anchor {
-            Anchor::Anchor1 => self.g.prev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.prev_edge_direction(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.prev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.prev_edge_direction(Anchor::Anchor2),
-        }
-    }
-
     pub fn spectres(&self) -> impl Iterator<Item = &Spectre> {
         vec![
             self.a.spectres(),
@@ -509,19 +498,19 @@ impl SuperSpectre {
         .flatten()
     }
 }
+
 pub struct SuperMystic {
     a: SpectreLike,
     b: SpectreLike,
     c: SpectreLike,
     d: SpectreLike,
-
     f: SpectreLike,
     g: SpectreLike,
     h: MysticLike,
 }
 
-impl SuperMystic {
-    pub fn anchor(&self, anchor: Anchor) -> Vec2 {
+impl Geometry for SuperMystic {
+    fn anchor(&self, anchor: Anchor) -> HexVec {
         match anchor {
             Anchor::Anchor1 => self.g.anchor(Anchor::Anchor3),
             Anchor::Anchor2 => self.d.anchor(Anchor::Anchor2),
@@ -530,6 +519,26 @@ impl SuperMystic {
         }
     }
 
+    fn edge_direction(&self, anchor: Anchor) -> Angle {
+        match anchor {
+            Anchor::Anchor1 => self.g.edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.edge_direction(Anchor::Anchor2),
+        }
+    }
+
+    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
+        match anchor {
+            Anchor::Anchor1 => self.g.prev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.prev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.prev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.prev_edge_direction(Anchor::Anchor2),
+        }
+    }
+}
+
+impl SuperMystic {
     pub fn spectres(&self) -> impl Iterator<Item = &Spectre> {
         vec![
             self.a.spectres(),
