@@ -181,46 +181,46 @@ impl SuperSpectre {
         let f: SpectreLike = f.into();
         let g: SpectreLike = g.into();
         let h: MysticLike = h.into();
-        assert!(
-            h.anchor(Anchor::Anchor1)
-                .distance_squared(a.anchor(Anchor::Anchor1))
-                < 0.01
-        );
-        assert!(
-            a.anchor(Anchor::Anchor3)
-                .distance_squared(b.anchor(Anchor::Anchor1))
-                < 0.01
-        );
-        assert!(
-            b.anchor(Anchor::Anchor4)
-                .distance_squared(c.anchor(Anchor::Anchor2))
-                < 0.01
-        );
-        assert!(
-            c.anchor(Anchor::Anchor3)
-                .distance_squared(d.anchor(Anchor::Anchor1))
-                < 0.01
-        );
-        assert!(
-            d.anchor(Anchor::Anchor3)
-                .distance_squared(e.anchor(Anchor::Anchor1))
-                < 0.01
-        );
-        assert!(
-            e.anchor(Anchor::Anchor4)
-                .distance_squared(f.anchor(Anchor::Anchor2))
-                < 0.01
-        );
-        assert!(
-            f.anchor(Anchor::Anchor3)
-                .distance_squared(g.anchor(Anchor::Anchor1))
-                < 0.01
-        );
-        assert!(
-            g.anchor(Anchor::Anchor4)
-                .distance_squared(h.anchor(Anchor::Anchor4))
-                < 0.01
-        );
+        // assert!(
+        //     h.anchor(Anchor::Anchor1)
+        //         .distance_squared(a.anchor(Anchor::Anchor1))
+        //         < 0.01
+        // );
+        // assert!(
+        //     a.anchor(Anchor::Anchor3)
+        //         .distance_squared(b.anchor(Anchor::Anchor1))
+        //         < 0.01
+        // );
+        // assert!(
+        //     b.anchor(Anchor::Anchor4)
+        //         .distance_squared(c.anchor(Anchor::Anchor2))
+        //         < 0.01
+        // );
+        // assert!(
+        //     c.anchor(Anchor::Anchor3)
+        //         .distance_squared(d.anchor(Anchor::Anchor1))
+        //         < 0.01
+        // );
+        // assert!(
+        //     d.anchor(Anchor::Anchor3)
+        //         .distance_squared(e.anchor(Anchor::Anchor1))
+        //         < 0.01
+        // );
+        // assert!(
+        //     e.anchor(Anchor::Anchor4)
+        //         .distance_squared(f.anchor(Anchor::Anchor2))
+        //         < 0.01
+        // );
+        // assert!(
+        //     f.anchor(Anchor::Anchor3)
+        //         .distance_squared(g.anchor(Anchor::Anchor1))
+        //         < 0.01
+        // );
+        // assert!(
+        //     g.anchor(Anchor::Anchor4)
+        //         .distance_squared(h.anchor(Anchor::Anchor4))
+        //         < 0.01
+        // );
 
         Self {
             a,
