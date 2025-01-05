@@ -22,10 +22,10 @@ impl Geometry for SpectreLike {
         }
     }
 
-    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
+    fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
         match self {
-            SpectreLike::Spectre(spectre) => spectre.prev_edge_direction(anchor),
-            SpectreLike::SuperSpectre(super_spectre) => super_spectre.prev_edge_direction(anchor),
+            SpectreLike::Spectre(spectre) => spectre.rev_edge_direction(anchor),
+            SpectreLike::SuperSpectre(super_spectre) => super_spectre.rev_edge_direction(anchor),
         }
     }
 }
@@ -71,10 +71,10 @@ impl Geometry for MysticLike {
         }
     }
 
-    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
+    fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
         match self {
-            MysticLike::Mystic(mystic) => mystic.prev_edge_direction(anchor),
-            MysticLike::SuperMystic(super_mystic) => super_mystic.prev_edge_direction(anchor),
+            MysticLike::Mystic(mystic) => mystic.rev_edge_direction(anchor),
+            MysticLike::SuperMystic(super_mystic) => super_mystic.rev_edge_direction(anchor),
         }
     }
 }

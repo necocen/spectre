@@ -13,5 +13,5 @@ use crate::utils::{Angle, HexVec};
 pub trait Geometry {
     fn anchor(&self, anchor: Anchor) -> HexVec;
     fn edge_direction(&self, anchor: Anchor) -> Angle;
-    fn prev_edge_direction(&self, anchor: Anchor) -> Angle;
+    fn rev_edge_direction(&self, anchor: Anchor) -> Angle;
 }

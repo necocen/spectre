@@ -20,7 +20,7 @@ impl Geometry for Spectre {
         Self::DIRECTIONS[anchor.index()] + self.angle
     }
 
-    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
+    fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
         Self::DIRECTIONS[(anchor.index() + Self::VERTEX_COUNT - 1) % Self::VERTEX_COUNT]
             + self.angle
     }
@@ -110,7 +110,7 @@ impl Spectre {
     /// 接続された新しいSpectre。このSpectreのfrom_anchorと新しいSpectreのto_anchorが接続される。
     pub fn adjacent_spectre(&self, from_anchor: Anchor, to_anchor: Anchor) -> Spectre {
         let rotation =
-            self.edge_direction(to_anchor) - self.prev_edge_direction(to_anchor).opposite();
+            self.edge_direction(to_anchor) - self.rev_edge_direction(to_anchor).opposite();
         let angle = self.edge_direction(from_anchor) + rotation;
 
         // 新しいSpectreを生成：接続点を基準に配置
@@ -152,8 +152,8 @@ impl Geometry for Mystic {
         self.a.edge_direction(anchor)
     }
 
-    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
-        self.a.prev_edge_direction(anchor)
+    fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
+        self.a.rev_edge_direction(anchor)
     }
 }
 

@@ -33,12 +33,12 @@ impl Geometry for SuperSpectre {
         }
     }
 
-    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
+    fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self.g.prev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.prev_edge_direction(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.prev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.prev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.rev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.rev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.rev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.rev_edge_direction(Anchor::Anchor2),
         }
     }
 }
@@ -299,7 +299,7 @@ impl SuperSpectre {
     fn adjacent_super_spectre(&self, from_anchor: Anchor, to_anchor: Anchor) -> SuperSpectre {
         // 新しいSpectreの角度を計算
         let rotation =
-            self.edge_direction(to_anchor) - self.prev_edge_direction(to_anchor).opposite();
+            self.edge_direction(to_anchor) - self.rev_edge_direction(to_anchor).opposite();
         let angle = self.edge_direction(from_anchor) + rotation;
 
         SuperSpectre::new_with_anchor(self.level, self.anchor(from_anchor), to_anchor, angle)
@@ -362,12 +362,12 @@ impl Geometry for SuperMystic {
         }
     }
 
-    fn prev_edge_direction(&self, anchor: Anchor) -> Angle {
+    fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self.g.prev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.prev_edge_direction(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.prev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.prev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.rev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.rev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.rev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.rev_edge_direction(Anchor::Anchor2),
         }
     }
 }
