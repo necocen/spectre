@@ -8,10 +8,10 @@ pub enum SpectreLike {
 }
 
 impl Geometry for SpectreLike {
-    fn anchor(&self, anchor: Anchor) -> HexVec {
+    fn point(&self, anchor: Anchor) -> HexVec {
         match self {
-            SpectreLike::Spectre(spectre) => spectre.anchor(anchor),
-            SpectreLike::SuperSpectre(super_spectre) => super_spectre.anchor(anchor),
+            SpectreLike::Spectre(spectre) => spectre.point(anchor),
+            SpectreLike::SuperSpectre(super_spectre) => super_spectre.point(anchor),
         }
     }
 
@@ -57,10 +57,10 @@ pub enum MysticLike {
 }
 
 impl Geometry for MysticLike {
-    fn anchor(&self, anchor: Anchor) -> HexVec {
+    fn point(&self, anchor: Anchor) -> HexVec {
         match self {
-            MysticLike::Mystic(mystic) => mystic.anchor(anchor),
-            MysticLike::SuperMystic(super_mystic) => super_mystic.anchor(anchor),
+            MysticLike::Mystic(mystic) => mystic.point(anchor),
+            MysticLike::SuperMystic(super_mystic) => super_mystic.point(anchor),
         }
     }
 

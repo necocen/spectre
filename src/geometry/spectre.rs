@@ -12,7 +12,7 @@ pub struct Spectre {
 }
 
 impl Geometry for Spectre {
-    fn anchor(&self, anchor: Anchor) -> HexVec {
+    fn point(&self, anchor: Anchor) -> HexVec {
         self.points(anchor.index())
     }
 
@@ -144,8 +144,8 @@ pub struct Mystic {
 }
 
 impl Geometry for Mystic {
-    fn anchor(&self, anchor: Anchor) -> HexVec {
-        self.a.anchor(anchor)
+    fn point(&self, anchor: Anchor) -> HexVec {
+        self.a.point(anchor)
     }
 
     fn edge_direction(&self, anchor: Anchor) -> Angle {

@@ -15,12 +15,12 @@ pub struct SuperSpectre {
 }
 
 impl Geometry for SuperSpectre {
-    fn anchor(&self, anchor: Anchor) -> HexVec {
+    fn point(&self, anchor: Anchor) -> HexVec {
         match anchor {
-            Anchor::Anchor1 => self.g.anchor(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.anchor(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.anchor(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.anchor(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.point(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.point(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.point(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.point(Anchor::Anchor2),
         }
     }
 
@@ -64,14 +64,14 @@ impl SuperSpectre {
         let f: SpectreLike = f.into();
         let g: SpectreLike = g.into();
         let h: MysticLike = h.into();
-        assert!(h.anchor(Anchor::Anchor1) == a.anchor(Anchor::Anchor1));
-        assert!(a.anchor(Anchor::Anchor3) == b.anchor(Anchor::Anchor1));
-        assert!(b.anchor(Anchor::Anchor4) == c.anchor(Anchor::Anchor2));
-        assert!(c.anchor(Anchor::Anchor3) == d.anchor(Anchor::Anchor1));
-        assert!(d.anchor(Anchor::Anchor3) == e.anchor(Anchor::Anchor1));
-        assert!(e.anchor(Anchor::Anchor4) == f.anchor(Anchor::Anchor2));
-        assert!(f.anchor(Anchor::Anchor3) == g.anchor(Anchor::Anchor1));
-        assert!(g.anchor(Anchor::Anchor4) == h.anchor(Anchor::Anchor4));
+        assert!(h.point(Anchor::Anchor1) == a.point(Anchor::Anchor1));
+        assert!(a.point(Anchor::Anchor3) == b.point(Anchor::Anchor1));
+        assert!(b.point(Anchor::Anchor4) == c.point(Anchor::Anchor2));
+        assert!(c.point(Anchor::Anchor3) == d.point(Anchor::Anchor1));
+        assert!(d.point(Anchor::Anchor3) == e.point(Anchor::Anchor1));
+        assert!(e.point(Anchor::Anchor4) == f.point(Anchor::Anchor2));
+        assert!(f.point(Anchor::Anchor3) == g.point(Anchor::Anchor1));
+        assert!(g.point(Anchor::Anchor4) == h.point(Anchor::Anchor4));
         Self {
             a,
             b,
@@ -302,7 +302,7 @@ impl SuperSpectre {
             self.edge_direction(to_anchor) - self.rev_edge_direction(to_anchor).opposite();
         let angle = self.edge_direction(from_anchor) + rotation;
 
-        SuperSpectre::new_with_anchor(self.level, self.anchor(from_anchor), to_anchor, angle)
+        SuperSpectre::new_with_anchor(self.level, self.point(from_anchor), to_anchor, angle)
     }
 
     fn into_super_mystic(self) -> SuperMystic {
@@ -344,12 +344,12 @@ pub struct SuperMystic {
 }
 
 impl Geometry for SuperMystic {
-    fn anchor(&self, anchor: Anchor) -> HexVec {
+    fn point(&self, anchor: Anchor) -> HexVec {
         match anchor {
-            Anchor::Anchor1 => self.g.anchor(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.anchor(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.anchor(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.anchor(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.point(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.point(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.point(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.point(Anchor::Anchor2),
         }
     }
 

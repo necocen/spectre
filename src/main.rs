@@ -53,10 +53,10 @@ fn to_instance_data(spectre: &Spectre) -> InstanceData {
 
     let position = {
         let anchors = [
-            spectre.anchor(Anchor::Anchor1),
-            spectre.anchor(Anchor::Anchor2),
-            spectre.anchor(Anchor::Anchor3),
-            spectre.anchor(Anchor::Anchor4),
+            spectre.point(Anchor::Anchor1),
+            spectre.point(Anchor::Anchor2),
+            spectre.point(Anchor::Anchor3),
+            spectre.point(Anchor::Anchor4),
         ];
         let sum = anchors.into_iter().fold(HexVec::ZERO, |acc, p| acc + p);
         sum.to_vec2() / 4.0
@@ -69,7 +69,7 @@ fn to_instance_data(spectre: &Spectre) -> InstanceData {
     // HSVからRGBに変換（明度70%）
     let color = Color::hsl(hue, saturation, 0.7).with_alpha(1.0);
 
-    let anchor_pos = spectre.anchor(Anchor::Anchor1).to_vec2();
+    let anchor_pos = spectre.point(Anchor::Anchor1).to_vec2();
     InstanceData {
         position: anchor_pos.extend(0.0),
         scale: TILE_SIZE,
