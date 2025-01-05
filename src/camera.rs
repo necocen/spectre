@@ -2,11 +2,7 @@ use bevy::{prelude::*, window::PrimaryWindow};
 
 pub fn setup_camera(mut commands: Commands) {
     commands
-        .spawn((
-            Camera3d::default(),
-            Msaa::Sample4,
-            Transform::from_xyz(0.0, 0.0, 900.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ))
+        .spawn((Camera2d, Msaa::Sample4))
         .insert(CameraController::default());
 }
 

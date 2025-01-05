@@ -1,6 +1,6 @@
 use bevy::{
     asset::embedded_asset,
-    core_pipeline::core_3d::Transparent3d,
+    core_pipeline::core_2d::Transparent2d,
     ecs::{
         query::QueryItem,
         system::{
@@ -8,9 +8,7 @@ use bevy::{
             SystemParamItem,
         },
     },
-    pbr::{
-        MeshPipeline, MeshPipelineKey, RenderMeshInstances, SetMeshBindGroup, SetMeshViewBindGroup,
-    },
+    math::FloatOrd,
     prelude::*,
     render::{
         extract_component::{ExtractComponent, ExtractComponentPlugin},
@@ -30,9 +28,12 @@ use bevy::{
             VertexFormat, VertexStepMode,
         },
         renderer::RenderDevice,
-        sync_world::MainEntity,
-        view::ExtractedView,
+        view::{ExtractedView, RenderVisibleEntities},
         Render, RenderApp, RenderSet,
+    },
+    sprite::{
+        Mesh2dPipeline, Mesh2dPipelineKey, RenderMesh2dInstances, SetMesh2dBindGroup,
+        SetMesh2dViewBindGroup,
     },
 };
 
@@ -45,7 +46,7 @@ impl Plugin for CustomMaterialPlugin {
         embedded_asset!(app, "./instancing.wgsl");
         app.add_plugins(ExtractComponentPlugin::<InstanceMaterialData>::default());
         app.sub_app_mut(RenderApp)
-            .add_render_command::<Transparent3d, DrawCustom>()
+            .add_render_command::<Transparent2d, DrawCustom>()
             .init_resource::<SpecializedMeshPipelines<CustomPipeline>>()
             .add_systems(
                 Render,
@@ -85,45 +86,44 @@ pub struct InstanceData {
 
 #[allow(clippy::too_many_arguments)]
 fn queue_custom(
-    transparent_3d_draw_functions: Res<DrawFunctions<Transparent3d>>,
+    transparent_2d_draw_functions: Res<DrawFunctions<Transparent2d>>,
     custom_pipeline: Res<CustomPipeline>,
     mut pipelines: ResMut<SpecializedMeshPipelines<CustomPipeline>>,
     pipeline_cache: Res<PipelineCache>,
     meshes: Res<RenderAssets<RenderMesh>>,
-    render_mesh_instances: Res<RenderMeshInstances>,
-    material_meshes: Query<(Entity, &MainEntity), With<InstanceMaterialData>>,
-    mut transparent_render_phases: ResMut<ViewSortedRenderPhases<Transparent3d>>,
-    views: Query<(Entity, &ExtractedView, &Msaa)>,
+    render_mesh_instances: Res<RenderMesh2dInstances>,
+    mut transparent_render_phases: ResMut<ViewSortedRenderPhases<Transparent2d>>,
+    views: Query<(Entity, &RenderVisibleEntities, &ExtractedView, &Msaa)>,
 ) {
-    let draw_custom = transparent_3d_draw_functions.read().id::<DrawCustom>();
+    if render_mesh_instances.is_empty() {
+        return;
+    }
+    let draw_custom = transparent_2d_draw_functions.read().id::<DrawCustom>();
 
-    for (view_entity, view, msaa) in &views {
+    for (view_entity, visible_entities, view, msaa) in &views {
         let Some(transparent_phase) = transparent_render_phases.get_mut(&view_entity) else {
             continue;
         };
+        let mesh_key = Mesh2dPipelineKey::from_msaa_samples(msaa.samples())
+            | Mesh2dPipelineKey::from_hdr(view.hdr);
 
-        let msaa_key = MeshPipelineKey::from_msaa_samples(msaa.samples());
-
-        let view_key = msaa_key | MeshPipelineKey::from_hdr(view.hdr);
-        let rangefinder = view.rangefinder3d();
-        for (entity, main_entity) in &material_meshes {
-            let Some(mesh_instance) = render_mesh_instances.render_mesh_queue_data(*main_entity)
-            else {
+        for (entity, main_entity) in visible_entities.iter::<With<Mesh2d>>() {
+            let Some(mesh_instance) = render_mesh_instances.get(main_entity) else {
                 continue;
             };
             let Some(mesh) = meshes.get(mesh_instance.mesh_asset_id) else {
                 continue;
             };
-            let key =
-                view_key | MeshPipelineKey::from_primitive_topology(mesh.primitive_topology());
+            let mesh2d_key =
+                mesh_key | Mesh2dPipelineKey::from_primitive_topology(mesh.primitive_topology());
             let pipeline = pipelines
-                .specialize(&pipeline_cache, &custom_pipeline, key, &mesh.layout)
+                .specialize(&pipeline_cache, &custom_pipeline, mesh2d_key, &mesh.layout)
                 .unwrap();
-            transparent_phase.add(Transparent3d {
-                entity: (entity, *main_entity),
+            transparent_phase.add(Transparent2d {
+                entity: (*entity, *main_entity),
                 pipeline,
                 draw_function: draw_custom,
-                distance: rangefinder.distance_translation(&mesh_instance.translation),
+                sort_key: FloatOrd(mesh_instance.transforms.world_from_local.translation.z),
                 batch_range: 0..1,
                 extra_index: PhaseItemExtraIndex::NONE,
             });
@@ -158,22 +158,20 @@ fn prepare_instance_buffers(
 #[derive(Resource)]
 struct CustomPipeline {
     shader: Handle<Shader>,
-    mesh_pipeline: MeshPipeline,
+    mesh_pipeline: Mesh2dPipeline,
 }
 
 impl FromWorld for CustomPipeline {
     fn from_world(world: &mut World) -> Self {
-        let mesh_pipeline = world.resource::<MeshPipeline>();
-
         CustomPipeline {
             shader: world.load_asset(SHADER_ASSET_PATH),
-            mesh_pipeline: mesh_pipeline.clone(),
+            mesh_pipeline: Mesh2dPipeline::from_world(world),
         }
     }
 }
 
 impl SpecializedMeshPipeline for CustomPipeline {
-    type Key = MeshPipelineKey;
+    type Key = Mesh2dPipelineKey;
 
     fn specialize(
         &self,
@@ -217,8 +215,8 @@ impl SpecializedMeshPipeline for CustomPipeline {
 
 type DrawCustom = (
     SetItemPipeline,
-    SetMeshViewBindGroup<0>,
-    SetMeshBindGroup<1>,
+    SetMesh2dViewBindGroup<0>,
+    SetMesh2dBindGroup<1>,
     DrawMeshInstanced,
 );
 
@@ -227,7 +225,7 @@ struct DrawMeshInstanced;
 impl<P: PhaseItem> RenderCommand<P> for DrawMeshInstanced {
     type Param = (
         SRes<RenderAssets<RenderMesh>>,
-        SRes<RenderMeshInstances>,
+        SRes<RenderMesh2dInstances>,
         SRes<MeshAllocator>,
     );
     type ViewQuery = ();
@@ -244,8 +242,7 @@ impl<P: PhaseItem> RenderCommand<P> for DrawMeshInstanced {
         // A borrow check workaround.
         let mesh_allocator = mesh_allocator.into_inner();
 
-        let Some(mesh_instance) = render_mesh_instances.render_mesh_queue_data(item.main_entity())
-        else {
+        let Some(mesh_instance) = render_mesh_instances.get(&item.main_entity()) else {
             return RenderCommandResult::Skip;
         };
         let Some(gpu_mesh) = meshes.into_inner().get(mesh_instance.mesh_asset_id) else {

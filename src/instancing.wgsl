@@ -1,6 +1,7 @@
-#import bevy_pbr::mesh_functions::{get_world_from_local, mesh_position_local_to_clip}
+#import bevy_sprite::mesh2d_functions::{get_world_from_local, mesh2d_position_local_to_clip}
 
 struct Vertex {
+    @builtin(instance_index) instance_index: u32,
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
@@ -40,8 +41,8 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 
     // 5) Bevy の既存関数でクリップ座標系へ変換
     var out: VertexOutput;
-    out.clip_position = mesh_position_local_to_clip(
-        get_world_from_local(0u),
+    out.clip_position = mesh2d_position_local_to_clip(
+        get_world_from_local(vertex.instance_index),
         vec4<f32>(scaled_pos, 1.0)
     );
 

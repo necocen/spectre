@@ -41,7 +41,7 @@ fn setup_tiles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     println!("counter: {}", instance_data.len());
 
     commands.spawn((
-        Mesh3d(mesh),
+        Mesh2d(mesh),
         InstanceMaterialData(instance_data),
         NoFrustumCulling,
     ));
