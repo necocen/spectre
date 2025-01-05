@@ -2,7 +2,6 @@ use anchor::Anchor;
 use angle::Angle;
 use bevy::{
     asset::RenderAssetUsages,
-    log::LogPlugin,
     prelude::*,
     render::{mesh::PrimitiveTopology, view::NoFrustumCulling},
 };
