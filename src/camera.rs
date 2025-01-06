@@ -1,4 +1,4 @@
-use bevy::{prelude::*, time::Time, window::PrimaryWindow};
+use bevy::{prelude::*, time::Time, window::PrimaryWindow, input::touch::TouchInput};
 
 pub fn setup_camera(mut commands: Commands) {
     commands
@@ -9,17 +9,16 @@ pub fn setup_camera(mut commands: Commands) {
 /// カメラの移動を制御するコンポーネント
 ///
 /// # Details
-/// マウスのドラッグ操作によってカメラを移動させる機能を提供します。
-/// 左クリックを押下している間、マウスの移動に合わせてカメラが移動します。
-/// ドラッグ終了後は慣性によって移動が続きます。
-/// マウスホイールでズームイン/アウトができます。
+/// マウスのドラッグ操作またはタッチ操作によってカメラを移動させる機能を提供します。
+/// マウス：左クリックドラッグで移動、ホイールでズーム
+/// タッチ：シングルタッチでドラッグ、ピンチジェスチャーでズーム
 #[derive(Component)]
 pub struct CameraController {
     /// カメラの移動速度（ピクセル単位）
     pub speed: f32,
     /// ドラッグ中かどうかのフラグ
     pub dragging: bool,
-    /// 前フレームでのマウス座標
+    /// 前フレームでのマウス/タッチ座標
     pub last_position: Vec2,
     /// カメラの現在の速度
     pub velocity: Vec2,
@@ -35,6 +34,8 @@ pub struct CameraController {
     pub max_zoom: f32,
     /// ズームの速度
     pub zoom_speed: f32,
+    /// 前フレームでのピンチ距離
+    pub last_pinch_distance: Option<f32>,
 }
 
 impl Default for CameraController {
@@ -44,134 +45,156 @@ impl Default for CameraController {
             dragging: false,           // 初期状態ではドラッグしていない
             last_position: Vec2::ZERO, // 初期位置は原点
             velocity: Vec2::ZERO,      // 初期速度はゼロ
-            damping: 0.95,             // 1フレームあたり5%の減速
+            damping: 0.95,            // 1フレームあたり5%の減速
             drag_velocity: Vec2::ZERO, // ドラッグ中の速度
-            zoom: 1.0,                 // 初期ズーム倍率
-            min_zoom: 0.5,             // 最小ズーム倍率（2倍ズームアウト）
-            max_zoom: 2.0,             // 最大ズーム倍率（2倍ズームイン）
-            zoom_speed: 0.1,           // ズームの速度係数
+            zoom: 1.0,                // 初期ズーム倍率
+            min_zoom: 0.5,            // 最小ズーム倍率（2倍ズームアウト）
+            max_zoom: 2.0,           // 最大ズーム倍率（2倍ズームイン）
+            zoom_speed: 0.1,          // ズームの速度係数
+            last_pinch_distance: None, // 前フレームでのピンチ距離
+        }
+    }
+}
+
+impl CameraController {
+    /// ドラッグ開始時の処理
+    fn start_drag(&mut self, position: Vec2) {
+        self.dragging = true;
+        self.last_position = position;
+        self.velocity = Vec2::ZERO;
+        self.drag_velocity = Vec2::ZERO;
+    }
+
+    /// ドラッグ中の処理
+    fn update_drag(&mut self, position: Vec2, transform: &mut Transform) {
+        let delta = position - self.last_position;
+        let zoom_speed_factor = self.speed / self.zoom;
+        transform.translation.x -= delta.x * zoom_speed_factor;
+        transform.translation.y += delta.y * zoom_speed_factor;
+        self.drag_velocity = -Vec2::new(delta.x, -delta.y);
+        self.last_position = position;
+    }
+
+    /// ドラッグ終了時の処理
+    fn end_drag(&mut self) {
+        self.dragging = false;
+        self.velocity = self.drag_velocity * 60.0 * self.speed / self.zoom;
+        self.drag_velocity = Vec2::ZERO;
+    }
+
+    /// ズーム処理
+    fn update_zoom(&mut self, zoom_delta: f32, zoom_center: Vec2, window: &Window, transform: &mut Transform) {
+        let old_zoom = self.zoom;
+        self.zoom = (self.zoom + zoom_delta).clamp(self.min_zoom, self.max_zoom);
+
+        // ズーム中心を基準に補正
+        let window_size = Vec2::new(window.width(), window.height());
+        let window_center = window_size * 0.5;
+        let center_offset = zoom_center - window_center;
+
+        // 現在のワールド座標でのズーム中心位置
+        let current_world_pos = transform.translation.truncate() + center_offset / old_zoom;
+        // 新しいズームでのズーム中心位置
+        let new_world_pos = transform.translation.truncate() + center_offset / self.zoom;
+
+        // カメラ位置を補正
+        transform.translation += (current_world_pos - new_world_pos).extend(0.0);
+        transform.scale = Vec3::splat(1.0 / self.zoom);
+    }
+
+    /// 慣性による移動の更新
+    fn update_inertia(&mut self, dt: f32, transform: &mut Transform) {
+        if !self.dragging && self.velocity.length_squared() > 0.01 {
+            transform.translation.x += self.velocity.x * dt;
+            transform.translation.y += self.velocity.y * dt;
+            self.velocity *= self.damping;
+            if self.velocity.length_squared() < 0.01 {
+                self.velocity = Vec2::ZERO;
+            }
         }
     }
 }
 
 /// カメラの移動を制御するシステム
-///
-/// # Arguments
-/// * `windows` - ウィンドウの情報を取得するためのクエリ
-/// * `mouse_input` - マウスの入力状態
-/// * `time` - 時間情報
-/// * `query` - カメラのTransformとControllerを取得するクエリ
-///
-/// # Details
-/// マウスの左クリックドラッグでカメラを移動させます：
-/// 1. 左クリック押下でドラッグ開始
-/// 2. ドラッグ中はマウスの移動量に応じてカメラを移動
-/// 3. 左クリック解放でドラッグ終了
-/// 4. ドラッグ終了後は慣性により移動が続く
-/// 5. マウスホイールでズーム
 pub fn camera_movement_system(
     windows: Query<&Window, With<PrimaryWindow>>,
     mouse_input: Res<ButtonInput<MouseButton>>,
     mut scroll_evr: EventReader<bevy::input::mouse::MouseWheel>,
+    mut touch_evr: EventReader<TouchInput>,
     time: Res<Time>,
     mut query: Query<(&mut Transform, &mut CameraController)>,
 ) {
-    // プライマリウィンドウを取得
     let window = windows.single();
     let dt = time.delta().as_secs_f32();
 
-    // カメラエンティティを処理
-    for (mut transform, controller) in query.iter_mut() {
+    for (mut transform, mut controller) in query.iter_mut() {
         let cursor_pos = window.cursor_position();
-        let CameraController {
-            speed,
-            dragging,
-            last_position,
-            velocity,
-            damping,
-            drag_velocity,
-            zoom,
-            min_zoom,
-            max_zoom,
-            zoom_speed,
-        } = *controller;
 
-        // ズーム処理
-        let mut new_zoom = zoom;
-        let mut scroll_amount = 0.0;
-        for event in scroll_evr.read() {
-            let bevy::input::mouse::MouseWheel { y, .. } = event;
-            scroll_amount += y;
-        }
-        if scroll_amount != 0.0 {
-            let zoom_delta = scroll_amount * zoom_speed;
+        // タッチ入力の処理
+        let active_touches: Vec<_> = touch_evr.read().collect();
+        if !active_touches.is_empty() {
+            match active_touches.len() {
+                1 => {
+                    // シングルタッチ（ドラッグ）
+                    let touch = &active_touches[0];
+                    match touch.phase {
+                        bevy::input::touch::TouchPhase::Started => {
+                            controller.start_drag(touch.position);
+                        }
+                        bevy::input::touch::TouchPhase::Moved => {
+                            if controller.dragging {
+                                controller.update_drag(touch.position, &mut transform);
+                            }
+                        }
+                        bevy::input::touch::TouchPhase::Ended | bevy::input::touch::TouchPhase::Canceled => {
+                            controller.end_drag();
+                        }
+                    }
+                }
+                2 => {
+                    // ピンチズーム
+                    let touch1 = active_touches[0].position;
+                    let touch2 = active_touches[1].position;
+                    let pinch_center = (touch1 + touch2) * 0.5;
+                    let current_distance = touch1.distance(touch2);
 
-            // カーソル位置を基準にズーム
-            if let Some(cursor_pos) = cursor_pos {
-                let old_scale = transform.scale.x;
-                new_zoom = (zoom + zoom_delta).clamp(min_zoom, max_zoom);
-                let new_scale = Vec3::splat(1.0 / new_zoom);
+                    if let Some(last_dist) = controller.last_pinch_distance {
+                        let distance_delta = current_distance - last_dist;
+                        let zoom_delta = distance_delta * controller.zoom_speed * 0.01;
+                        controller.update_zoom(zoom_delta, pinch_center, window, &mut transform);
+                    }
+                    controller.last_pinch_distance = Some(current_distance);
+                }
+                _ => {
+                    controller.last_pinch_distance = None;
+                }
+            }
+        } else {
+            // マウス入力の処理
+            controller.last_pinch_distance = None;
 
-                // カーソル位置を基準にズームするための補正
-                let window_size = Vec2::new(
-                    window.physical_width() as f32,
-                    window.physical_height() as f32,
-                );
-                let cursor_world = transform.translation.truncate() + (cursor_pos - window_size * 0.5) * old_scale;
-                let new_cursor_world = transform.translation.truncate() + (cursor_pos - window_size * 0.5) * new_scale.x;
-                transform.translation += (cursor_world - new_cursor_world).extend(0.0);
-                transform.scale = new_scale;
+            // ズーム処理（マウスホイール）
+            let scroll_amount: f32 = scroll_evr.read().map(|e| e.y).sum();
+            if scroll_amount != 0.0 && cursor_pos.is_some() {
+                let zoom_delta = scroll_amount * controller.zoom_speed;
+                controller.update_zoom(zoom_delta, cursor_pos.unwrap(), window, &mut transform);
+            }
+
+            // マウスドラッグ処理
+            if mouse_input.just_pressed(MouseButton::Left) {
+                if let Some(pos) = cursor_pos {
+                    controller.start_drag(pos);
+                }
+            } else if mouse_input.just_released(MouseButton::Left) {
+                controller.end_drag();
+            } else if controller.dragging {
+                if let Some(pos) = cursor_pos {
+                    controller.update_drag(pos, &mut transform);
+                }
             }
         }
 
-        // ズームに応じた速度調整係数を計算
-        let zoom_speed_factor = speed / new_zoom;
-
-        let (new_dragging, new_last_pos, new_velocity, new_drag_velocity) =
-            if mouse_input.just_pressed(MouseButton::Left) {
-                // ドラッグ開始
-                if let Some(pos) = cursor_pos {
-                    (true, pos, Vec2::ZERO, Vec2::ZERO)
-                } else {
-                    (dragging, last_position, velocity, drag_velocity)
-                }
-            } else if mouse_input.just_released(MouseButton::Left) {
-                // ドラッグ終了：現在のドラッグ速度を慣性速度として使用
-                // フレームレート（60fps）で正規化して適切な速度にする
-                // ズームに応じて速度を調整
-                (false, last_position, drag_velocity * 60.0 * zoom_speed_factor, Vec2::ZERO)
-            } else if dragging {
-                // ドラッグ中：現在の移動速度を計算して保存
-                if let Some(pos) = cursor_pos {
-                    let delta = pos - last_position;
-                    let current_velocity = -Vec2::new(delta.x, -delta.y);
-                    // ズームに応じて移動速度を調整
-                    transform.translation.x -= delta.x * zoom_speed_factor;
-                    transform.translation.y += delta.y * zoom_speed_factor;
-                    // 現在のフレームの速度を保存
-                    (dragging, pos, velocity, current_velocity)
-                } else {
-                    (dragging, last_position, velocity, drag_velocity)
-                }
-            } else if velocity.length_squared() > 0.01 {
-                // 慣性による移動（速度はすでにズーム調整済み）
-                transform.translation.x += velocity.x * dt;
-                transform.translation.y += velocity.y * dt;
-                let mut new_vel = velocity * damping;
-                if new_vel.length_squared() < 0.01 {
-                    new_vel = Vec2::ZERO;
-                }
-                (dragging, last_position, new_vel, Vec2::ZERO)
-            } else {
-                (dragging, last_position, velocity, Vec2::ZERO)
-            };
-
-        // 状態の一括更新
-        let mut controller = controller;
-        controller.dragging = new_dragging;
-        controller.last_position = new_last_pos;
-        controller.velocity = new_velocity;
-        controller.drag_velocity = new_drag_velocity;
-        controller.zoom = new_zoom;
+        // 慣性による移動の更新
+        controller.update_inertia(dt, &mut transform);
     }
 }
