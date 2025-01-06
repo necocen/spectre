@@ -6,12 +6,27 @@ pub fn setup_camera(mut commands: Commands) {
         .insert(CameraController::default());
 }
 
+/// タッチ操作の状態を表す列挙型
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum TouchState {
+    /// タッチなし
+    None,
+    /// シングルタッチでのドラッグ
+    Dragging {
+        /// タッチID
+        id: u64,
+    },
+    /// ピンチズーム中
+    Pinching {
+        /// タッチID
+        id1: u64,
+        id2: u64,
+        /// 前回のピンチ距離
+        last_distance: f32,
+    },
+}
+
 /// カメラの移動を制御するコンポーネント
-///
-/// # Details
-/// マウスのドラッグ操作またはタッチ操作によってカメラを移動させる機能を提供します。
-/// マウス：左クリックドラッグで移動、ホイールでズーム
-/// タッチ：シングルタッチでドラッグ、ピンチジェスチャーでズーム
 #[derive(Component)]
 pub struct CameraController {
     /// カメラの移動速度（ピクセル単位）
@@ -34,8 +49,8 @@ pub struct CameraController {
     pub max_zoom: f32,
     /// ズームの速度
     pub zoom_speed: f32,
-    /// 前フレームでのピンチ距離
-    pub last_pinch_distance: Option<f32>,
+    /// タッチの状態
+    touch_state: TouchState,
 }
 
 impl Default for CameraController {
@@ -51,18 +66,21 @@ impl Default for CameraController {
             min_zoom: 0.5,            // 最小ズーム倍率（2倍ズームアウト）
             max_zoom: 2.0,           // 最大ズーム倍率（2倍ズームイン）
             zoom_speed: 0.1,          // ズームの速度係数
-            last_pinch_distance: None, // 前フレームでのピンチ距離
+            touch_state: TouchState::None,
         }
     }
 }
 
 impl CameraController {
     /// ドラッグ開始時の処理
-    fn start_drag(&mut self, position: Vec2) {
+    fn start_drag(&mut self, position: Vec2, id: Option<u64>) {
         self.dragging = true;
         self.last_position = position;
         self.velocity = Vec2::ZERO;
         self.drag_velocity = Vec2::ZERO;
+        if let Some(id) = id {
+            self.touch_state = TouchState::Dragging { id };
+        }
     }
 
     /// ドラッグ中の処理
@@ -80,26 +98,55 @@ impl CameraController {
         self.dragging = false;
         self.velocity = self.drag_velocity * 60.0 * self.speed / self.zoom;
         self.drag_velocity = Vec2::ZERO;
+        if matches!(self.touch_state, TouchState::Dragging { .. }) {
+            self.touch_state = TouchState::None;
+        }
+    }
+
+    /// スクリーン座標をワールド座標に変換
+    fn screen_to_world(&self, screen_pos: Vec2, window_size: Vec2, transform: &Transform) -> Vec2 {
+        let screen_center = window_size * 0.5;
+        let screen_offset = screen_pos - screen_center;
+        transform.translation.truncate() + screen_offset / self.zoom
+    }
+
+    /// ワールド座標をスクリーン座標に変換
+    fn world_to_screen(&self, world_pos: Vec2, window_size: Vec2, transform: &Transform) -> Vec2 {
+        let screen_center = window_size * 0.5;
+        let world_offset = world_pos - transform.translation.truncate();
+        screen_center + world_offset * self.zoom
     }
 
     /// ズーム処理
-    fn update_zoom(&mut self, zoom_delta: f32, zoom_center: Vec2, window: &Window, transform: &mut Transform) {
+    fn update_zoom(&mut self, zoom_delta: f32, cursor_pos: Vec2, window: &Window, transform: &mut Transform) {
         let old_zoom = self.zoom;
-        self.zoom = (self.zoom + zoom_delta).clamp(self.min_zoom, self.max_zoom);
 
-        // ズーム中心を基準に補正
-        let window_size = Vec2::new(window.width(), window.height());
-        let window_center = window_size * 0.5;
-        let center_offset = zoom_center - window_center;
+        // ズーム速度を調整（マウスホイールの場合は0.1倍）
+        let adjusted_delta = if matches!(self.touch_state, TouchState::Pinching { .. }) {
+            zoom_delta
+        } else {
+            zoom_delta * 0.1
+        };
 
-        // 現在のワールド座標でのズーム中心位置
-        let current_world_pos = transform.translation.truncate() + center_offset / old_zoom;
-        // 新しいズームでのズーム中心位置
-        let new_world_pos = transform.translation.truncate() + center_offset / self.zoom;
+        let new_zoom = (old_zoom * (1.0 + adjusted_delta)).clamp(self.min_zoom, self.max_zoom);
 
-        // カメラ位置を補正
-        transform.translation += (current_world_pos - new_world_pos).extend(0.0);
-        transform.scale = Vec3::splat(1.0 / self.zoom);
+        if (new_zoom - old_zoom).abs() > f32::EPSILON {
+            let window_size = Vec2::new(window.width(), window.height());
+
+            // ズーム前のワールド座標を計算
+            let world_pos = self.screen_to_world(cursor_pos, window_size, transform);
+
+            // ズームを適用
+            self.zoom = new_zoom;
+            transform.scale = Vec3::splat(1.0 / new_zoom);
+
+            // ズーム後のスクリーン座標を計算して位置を補正
+            let new_screen_pos = self.world_to_screen(world_pos, window_size, transform);
+            let screen_delta = new_screen_pos - cursor_pos;
+            // スクリーン座標の差分をワールド座標に変換（Y座標は反転）
+            let world_delta = Vec2::new(screen_delta.x, -screen_delta.y) / new_zoom;
+            transform.translation += world_delta.extend(0.0);
+        }
     }
 
     /// 慣性による移動の更新
@@ -112,6 +159,48 @@ impl CameraController {
                 self.velocity = Vec2::ZERO;
             }
         }
+    }
+
+    /// ピンチズーム開始
+    fn start_pinch(&mut self, touch1: Vec2, touch2: Vec2, id1: u64, id2: u64) {
+        let distance = touch1.distance(touch2);
+        self.touch_state = TouchState::Pinching {
+            id1,
+            id2,
+            last_distance: distance,
+        };
+        self.dragging = false;
+        self.velocity = Vec2::ZERO;
+        self.drag_velocity = Vec2::ZERO;
+    }
+
+    /// ピンチズーム更新
+    fn update_pinch(&mut self, touch1: Vec2, touch2: Vec2, window: &Window, transform: &mut Transform) {
+        let current_distance = touch1.distance(touch2);
+        let center = (touch1 + touch2) * 0.5;
+
+        if let TouchState::Pinching { last_distance, .. } = self.touch_state {
+            let distance_delta = (current_distance - last_distance) / last_distance;
+            let zoom_delta = distance_delta * self.zoom_speed;
+            self.update_zoom(zoom_delta, center, window, transform);
+
+            self.touch_state = match self.touch_state {
+                TouchState::Pinching { id1, id2, .. } => TouchState::Pinching {
+                    id1,
+                    id2,
+                    last_distance: current_distance,
+                },
+                _ => unreachable!(),
+            };
+        }
+    }
+
+    /// ピンチズーム終了
+    fn end_pinch(&mut self) {
+        self.touch_state = TouchState::None;
+        self.dragging = false;
+        self.velocity = Vec2::ZERO;
+        self.drag_velocity = Vec2::ZERO;
     }
 }
 
@@ -139,40 +228,53 @@ pub fn camera_movement_system(
                     let touch = &active_touches[0];
                     match touch.phase {
                         bevy::input::touch::TouchPhase::Started => {
-                            controller.start_drag(touch.position);
+                            if matches!(controller.touch_state, TouchState::None) {
+                                controller.start_drag(touch.position, Some(touch.id));
+                            }
                         }
                         bevy::input::touch::TouchPhase::Moved => {
-                            if controller.dragging {
-                                controller.update_drag(touch.position, &mut transform);
+                            if let TouchState::Dragging { id } = controller.touch_state {
+                                if id == touch.id {
+                                    controller.update_drag(touch.position, &mut transform);
+                                }
                             }
                         }
                         bevy::input::touch::TouchPhase::Ended | bevy::input::touch::TouchPhase::Canceled => {
-                            controller.end_drag();
+                            if let TouchState::Dragging { id } = controller.touch_state {
+                                if id == touch.id {
+                                    controller.end_drag();
+                                }
+                            }
                         }
                     }
                 }
                 2 => {
                     // ピンチズーム
-                    let touch1 = active_touches[0].position;
-                    let touch2 = active_touches[1].position;
-                    let pinch_center = (touch1 + touch2) * 0.5;
-                    let current_distance = touch1.distance(touch2);
+                    let touch1 = &active_touches[0];
+                    let touch2 = &active_touches[1];
 
-                    if let Some(last_dist) = controller.last_pinch_distance {
-                        let distance_delta = current_distance - last_dist;
-                        let zoom_delta = distance_delta * controller.zoom_speed * 0.01;
-                        controller.update_zoom(zoom_delta, pinch_center, window, &mut transform);
+                    match controller.touch_state {
+                        TouchState::None | TouchState::Dragging { .. } => {
+                            controller.start_pinch(touch1.position, touch2.position, touch1.id, touch2.id);
+                        }
+                        TouchState::Pinching { id1, id2, .. } => {
+                            if (id1 == touch1.id && id2 == touch2.id) || (id1 == touch2.id && id2 == touch1.id) {
+                                controller.update_pinch(touch1.position, touch2.position, window, &mut transform);
+                            }
+                        }
                     }
-                    controller.last_pinch_distance = Some(current_distance);
                 }
                 _ => {
-                    controller.last_pinch_distance = None;
+                    controller.end_pinch();
                 }
             }
         } else {
-            // マウス入力の処理
-            controller.last_pinch_distance = None;
+            // タッチ入力がない場合は状態をリセット
+            if !matches!(controller.touch_state, TouchState::None) {
+                controller.touch_state = TouchState::None;
+            }
 
+            // マウス入力の処理
             // ズーム処理（マウスホイール）
             let scroll_amount: f32 = scroll_evr.read().map(|e| e.y).sum();
             if scroll_amount != 0.0 && cursor_pos.is_some() {
@@ -183,7 +285,7 @@ pub fn camera_movement_system(
             // マウスドラッグ処理
             if mouse_input.just_pressed(MouseButton::Left) {
                 if let Some(pos) = cursor_pos {
-                    controller.start_drag(pos);
+                    controller.start_drag(pos, None);
                 }
             } else if mouse_input.just_released(MouseButton::Left) {
                 controller.end_drag();
