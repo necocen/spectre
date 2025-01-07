@@ -37,6 +37,8 @@ pub struct CameraController {
     pub speed: f32,
     /// ドラッグ中かどうかのフラグ
     pub dragging: bool,
+    /// 前フレームでのマウス位置
+    pub last_mouse_position: Option<Vec2>,
     /// カメラの現在の速度
     pub velocity: Vec2,
     /// 慣性の減衰係数（1フレームあたり）
@@ -64,6 +66,7 @@ impl Default for CameraController {
         Self {
             speed: 1.0,
             dragging: false,
+            last_mouse_position: None,
             velocity: Vec2::ZERO,
             damping: 0.95,
             drag_velocity: Vec2::ZERO,
@@ -89,6 +92,8 @@ impl CameraController {
                 id,
                 last_position: position,
             };
+        } else {
+            self.last_mouse_position = Some(position);
         }
     }
 
@@ -107,6 +112,7 @@ impl CameraController {
         self.velocity = self.drag_velocity * 60.0 * self.speed / self.zoom;
         self.drag_velocity = Vec2::ZERO;
         self.touch_state = TouchState::None;
+        self.last_mouse_position = None;
     }
 
     /// スクリーン座標をワールド座標に変換
@@ -279,6 +285,7 @@ pub fn camera_movement_system(
                 controller.update_zoom(new_zoom, cursor_pos.unwrap(), window, &mut transform);
             }
 
+            // マウス入力の処理
             if mouse_input.just_pressed(MouseButton::Left) {
                 if let Some(pos) = cursor_pos {
                     controller.start_drag(pos, None);
@@ -287,7 +294,10 @@ pub fn camera_movement_system(
                 controller.end_drag();
             } else if controller.dragging {
                 if let Some(pos) = cursor_pos {
-                    controller.update_drag(pos, pos, &mut transform);
+                    if let Some(last_pos) = controller.last_mouse_position {
+                        controller.update_drag(pos, last_pos, &mut transform);
+                    }
+                    controller.last_mouse_position = cursor_pos;
                 }
             }
         }
