@@ -23,8 +23,10 @@ enum TouchState {
         /// タッチID
         id1: u64,
         id2: u64,
-        /// 前回のピンチ距離
-        last_distance: f32,
+        /// ピンチ開始時の距離
+        initial_distance: f32,
+        /// ピンチ開始時のズーム倍率
+        initial_zoom: f32,
     },
 }
 
@@ -41,14 +43,18 @@ pub struct CameraController {
     pub damping: f32,
     /// ドラッグ中の速度
     pub drag_velocity: Vec2,
-    /// カメラのズーム倍率
+    /// カメラの現在のズーム倍率
     pub zoom: f32,
+    /// 目標のズーム倍率
+    pub target_zoom: f32,
     /// ズームの最小値
     pub min_zoom: f32,
     /// ズームの最大値
     pub max_zoom: f32,
     /// ズームの速度
     pub zoom_speed: f32,
+    /// ズームのスムージング係数
+    pub zoom_smoothing: f32,
     /// タッチの状態
     touch_state: TouchState,
 }
@@ -62,9 +68,11 @@ impl Default for CameraController {
             damping: 0.95,
             drag_velocity: Vec2::ZERO,
             zoom: 1.0,
-            min_zoom: 0.5,
-            max_zoom: 2.0,
+            target_zoom: 1.0,
+            min_zoom: 0.25,
+            max_zoom: 4.0,
             zoom_speed: 0.2,
+            zoom_smoothing: 0.3,
             touch_state: TouchState::None,
         }
     }
@@ -116,27 +124,22 @@ impl CameraController {
     }
 
     /// ズーム処理
-    fn update_zoom(&mut self, zoom_delta: f32, cursor_pos: Vec2, window: &Window, transform: &mut Transform) {
+    fn update_zoom(&mut self, new_target_zoom: f32, cursor_pos: Vec2, window: &Window, transform: &mut Transform) {
         let old_zoom = self.zoom;
+        self.target_zoom = new_target_zoom.clamp(self.min_zoom, self.max_zoom);
 
-        let adjusted_delta = if matches!(self.touch_state, TouchState::Pinching { .. }) {
-            zoom_delta * 0.2
-        } else {
-            zoom_delta * 0.1
-        };
+        // 現在のズーム値を目標値に向けて補間
+        self.zoom = self.zoom + (self.target_zoom - self.zoom) * self.zoom_smoothing;
 
-        let new_zoom = (old_zoom * (1.0 + adjusted_delta)).clamp(self.min_zoom, self.max_zoom);
-
-        if (new_zoom - old_zoom).abs() > f32::EPSILON {
+        if (self.zoom - old_zoom).abs() > f32::EPSILON {
             let window_size = Vec2::new(window.width(), window.height());
             let world_pos = self.screen_to_world(cursor_pos, window_size, transform);
 
-            self.zoom = new_zoom;
-            transform.scale = Vec3::splat(1.0 / new_zoom);
+            transform.scale = Vec3::splat(1.0 / self.zoom);
 
             let new_screen_pos = self.world_to_screen(world_pos, window_size, transform);
             let screen_delta = cursor_pos - new_screen_pos;
-            let world_delta = Vec2::new(screen_delta.x, -screen_delta.y) / new_zoom;
+            let world_delta = Vec2::new(screen_delta.x, -screen_delta.y) / self.zoom;
             transform.translation += world_delta.extend(0.0);
         }
     }
@@ -159,7 +162,8 @@ impl CameraController {
         self.touch_state = TouchState::Pinching {
             id1,
             id2,
-            last_distance: distance,
+            initial_distance: distance,
+            initial_zoom: self.zoom,
         };
         self.dragging = false;
         self.velocity = Vec2::ZERO;
@@ -171,19 +175,10 @@ impl CameraController {
         let current_distance = touch1.distance(touch2);
         let center = (touch1 + touch2) * 0.5;
 
-        if let TouchState::Pinching { last_distance, .. } = self.touch_state {
-            let distance_delta = (current_distance - last_distance) / last_distance;
-            let zoom_delta = distance_delta * self.zoom_speed;
-            self.update_zoom(zoom_delta, center, window, transform);
-
-            self.touch_state = match self.touch_state {
-                TouchState::Pinching { id1, id2, .. } => TouchState::Pinching {
-                    id1,
-                    id2,
-                    last_distance: current_distance,
-                },
-                _ => unreachable!(),
-            };
+        if let TouchState::Pinching { initial_distance, initial_zoom, .. } = self.touch_state {
+            // 初期距離との比率から目標のズーム倍率を計算
+            let target_zoom = initial_zoom * (current_distance / initial_distance);
+            self.update_zoom(target_zoom, center, window, transform);
         }
     }
 
@@ -280,7 +275,8 @@ pub fn camera_movement_system(
             let scroll_amount: f32 = scroll_evr.read().map(|e| e.y).sum();
             if scroll_amount != 0.0 && cursor_pos.is_some() {
                 let zoom_delta = scroll_amount * controller.zoom_speed;
-                controller.update_zoom(zoom_delta, cursor_pos.unwrap(), window, &mut transform);
+                let new_zoom = controller.zoom * (1.0 + zoom_delta * 0.1);
+                controller.update_zoom(new_zoom, cursor_pos.unwrap(), window, &mut transform);
             }
 
             if mouse_input.just_pressed(MouseButton::Left) {
