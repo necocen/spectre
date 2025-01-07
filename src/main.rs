@@ -26,9 +26,8 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins(CustomMaterialPlugin)
-        .add_systems(Startup, (camera::setup_camera, setup_tiles))
-        .add_systems(Update, camera::camera_movement_system)
+        .add_plugins((camera::CameraPlugin, CustomMaterialPlugin))
+        .add_systems(Startup, setup_tiles)
         .run();
 }
 
@@ -97,7 +96,6 @@ fn setup_mesh(meshes: &mut ResMut<Assets<Mesh>>) -> Handle<Mesh> {
             tessellator.tessellate_path(&path, &FillOptions::default(), &mut vertex_builder);
         assert!(result.is_ok());
     }
-
     let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
         RenderAssetUsages::RENDER_WORLD,

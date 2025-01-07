@@ -1,6 +1,15 @@
-use bevy::{prelude::*, time::Time, window::PrimaryWindow, input::touch::TouchInput};
+use bevy::{input::touch::TouchInput, prelude::*, time::Time, window::PrimaryWindow};
 
-pub fn setup_camera(mut commands: Commands) {
+pub struct CameraPlugin;
+
+impl Plugin for CameraPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, setup_camera)
+            .add_systems(Update, camera_movement_system);
+    }
+}
+
+fn setup_camera(mut commands: Commands) {
     commands
         .spawn((Camera2d, Msaa::Sample4))
         .insert(CameraController::default());
@@ -32,7 +41,7 @@ enum TouchState {
 
 /// カメラの移動を制御するコンポーネント
 #[derive(Component)]
-pub struct CameraController {
+struct CameraController {
     /// カメラの移動速度（ピクセル単位）
     pub speed: f32,
     /// ドラッグ中かどうかのフラグ
@@ -130,7 +139,13 @@ impl CameraController {
     }
 
     /// ズーム処理
-    fn update_zoom(&mut self, new_target_zoom: f32, cursor_pos: Vec2, window: &Window, transform: &mut Transform) {
+    fn update_zoom(
+        &mut self,
+        new_target_zoom: f32,
+        cursor_pos: Vec2,
+        window: &Window,
+        transform: &mut Transform,
+    ) {
         let old_zoom = self.zoom;
         self.target_zoom = new_target_zoom.clamp(self.min_zoom, self.max_zoom);
 
@@ -177,11 +192,22 @@ impl CameraController {
     }
 
     /// ピンチズーム更新
-    fn update_pinch(&mut self, touch1: Vec2, touch2: Vec2, window: &Window, transform: &mut Transform) {
+    fn update_pinch(
+        &mut self,
+        touch1: Vec2,
+        touch2: Vec2,
+        window: &Window,
+        transform: &mut Transform,
+    ) {
         let current_distance = touch1.distance(touch2);
         let center = (touch1 + touch2) * 0.5;
 
-        if let TouchState::Pinching { initial_distance, initial_zoom, .. } = self.touch_state {
+        if let TouchState::Pinching {
+            initial_distance,
+            initial_zoom,
+            ..
+        } = self.touch_state
+        {
             // 初期距離との比率から目標のズーム倍率を計算
             let target_zoom = initial_zoom * (current_distance / initial_distance);
             self.update_zoom(target_zoom, center, window, transform);
@@ -198,7 +224,7 @@ impl CameraController {
 }
 
 /// カメラの移動を制御するシステム
-pub fn camera_movement_system(
+fn camera_movement_system(
     windows: Query<&Window, With<PrimaryWindow>>,
     mouse_input: Res<ButtonInput<MouseButton>>,
     mut scroll_evr: EventReader<bevy::input::mouse::MouseWheel>,
@@ -231,9 +257,15 @@ pub fn camera_movement_system(
                             controller.start_drag(touch.position, Some(touch.id));
                         }
                         bevy::input::touch::TouchPhase::Moved => {
-                            if let TouchState::Dragging { id, last_position } = controller.touch_state {
+                            if let TouchState::Dragging { id, last_position } =
+                                controller.touch_state
+                            {
                                 if id == touch.id {
-                                    controller.update_drag(touch.position, last_position, &mut transform);
+                                    controller.update_drag(
+                                        touch.position,
+                                        last_position,
+                                        &mut transform,
+                                    );
                                     controller.touch_state = TouchState::Dragging {
                                         id,
                                         last_position: touch.position,
@@ -243,7 +275,8 @@ pub fn camera_movement_system(
                                 controller.start_drag(touch.position, Some(touch.id));
                             }
                         }
-                        bevy::input::touch::TouchPhase::Ended | bevy::input::touch::TouchPhase::Canceled => {
+                        bevy::input::touch::TouchPhase::Ended
+                        | bevy::input::touch::TouchPhase::Canceled => {
                             if let TouchState::Dragging { id, .. } = controller.touch_state {
                                 if id == touch.id {
                                     controller.end_drag();
@@ -261,11 +294,23 @@ pub fn camera_movement_system(
 
                     match controller.touch_state {
                         TouchState::None | TouchState::Dragging { .. } if both_moving => {
-                            controller.start_pinch(touch1.position, touch2.position, touch1.id, touch2.id);
+                            controller.start_pinch(
+                                touch1.position,
+                                touch2.position,
+                                touch1.id,
+                                touch2.id,
+                            );
                         }
                         TouchState::Pinching { id1, id2, .. } if both_moving => {
-                            if (id1 == touch1.id && id2 == touch2.id) || (id1 == touch2.id && id2 == touch1.id) {
-                                controller.update_pinch(touch1.position, touch2.position, window, &mut transform);
+                            if (id1 == touch1.id && id2 == touch2.id)
+                                || (id1 == touch2.id && id2 == touch1.id)
+                            {
+                                controller.update_pinch(
+                                    touch1.position,
+                                    touch2.position,
+                                    window,
+                                    &mut transform,
+                                );
                             }
                         }
                         _ => {}
