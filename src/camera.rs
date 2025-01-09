@@ -82,7 +82,7 @@ impl Default for CameraController {
             zoom: 1.0,
             target_zoom: 1.0,
             min_zoom: 0.25,
-            max_zoom: 3.0,
+            max_zoom: 4.0,
             zoom_speed: 0.2,
             zoom_smoothing: 0.3,
             touch_state: TouchState::None,

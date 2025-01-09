@@ -109,7 +109,6 @@ fn setup_mesh(meshes: &mut ResMut<Assets<Mesh>>) -> Handle<Mesh> {
 #[derive(Component)]
 pub struct SpectreTag;
 
-
 fn camera_view_system(
     manager: Res<SpectresManager>,
     windows: Query<&Window, With<PrimaryWindow>>,
@@ -135,7 +134,7 @@ fn camera_view_system(
     let bottom = max.y;
 
     // ここで計算した可視範囲に合わせてタイルの生成・破棄を行う
-    let mut instance_data = Vec::<InstanceData>::with_capacity(100000);
+    let mut instance_data = Vec::<InstanceData>::with_capacity((entity_query.single().0.len() as f64 * 1.1).ceil() as usize);
     let spectres = manager
         .spectres
         .locate_in_envelope(&AABB::from_corners([left, top], [right , bottom])).map(|s| to_instance_data(s));
