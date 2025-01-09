@@ -1,9 +1,23 @@
 use crate::utils::{Angle, HexValue, HexVec};
+use rstar::{RTreeObject, AABB};
 
 use super::{Anchor, Geometry};
 
+impl RTreeObject for Spectre {
+    type Envelope = AABB<[f32; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        let points = self.all_points().iter().map(|p| p.to_vec2()).collect::<Vec<_>>();
+        let min_x = points.iter().map(|p| p.x).fold(f32::INFINITY, f32::min);
+        let min_y = points.iter().map(|p| p.y).fold(f32::INFINITY, f32::min);
+        let max_x = points.iter().map(|p| p.x).fold(f32::NEG_INFINITY, f32::max);
+        let max_y = points.iter().map(|p| p.y).fold(f32::NEG_INFINITY, f32::max);
+        AABB::from_corners([min_x, min_y], [max_x, max_y])
+    }
+}
+
 /// タイルの形状を表す
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Spectre {
     /// アンカー1から反時計回りに進む辺の向く方向
     pub angle: Angle,
@@ -132,7 +146,7 @@ impl Spectre {
     }
 
     pub fn into_mystic(self) -> Mystic {
-        let a = self.clone();
+        let a = self;
         let b = Spectre::new_with_anchor_at(a.points(1), 13, a.angle + Angle::new(9));
         Mystic { a, b }
     }

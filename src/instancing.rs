@@ -148,6 +148,11 @@ fn prepare_instance_buffers(
             contents: bytemuck::cast_slice(instance_data.as_slice()),
             usage: BufferUsages::VERTEX | BufferUsages::COPY_DST,
         });
+        if instance_data.is_empty() {
+            // 0個で描画しようとすると落ちる
+            continue;
+        }
+        info!("Instance buffer created: {}", instance_data.len());
         commands.entity(entity).insert(InstanceBuffer {
             buffer,
             length: instance_data.len(),
