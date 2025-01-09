@@ -1,13 +1,12 @@
 #import bevy_sprite::mesh2d_functions::{get_world_from_local, mesh2d_position_local_to_clip}
+#import bevy_render::color_operations::hsv_to_rgb
 
 struct Vertex {
     @location(0) position: vec3<f32>,
     @location(1) normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
 
-    @location(3) i_pos_scale: vec4<f32>,
-    @location(4) i_color: vec4<f32>,
-    @location(5) i_angle: f32,
+    @location(3) i_pos_angle: vec4<f32>,
 };
 
 struct VertexOutput {
@@ -17,12 +16,13 @@ struct VertexOutput {
 
 @vertex
 fn vertex(vertex: Vertex) -> VertexOutput {
+    let angle = vertex.i_pos_angle.w;
     // 1) 回転行列の構築
-    let c = cos(vertex.i_angle);
-    let s = sin(vertex.i_angle);
+    let c = cos(angle);
+    let s = sin(angle);
     let rotation_matrix = mat2x2<f32>(
         c, s,
-        -s,  c
+        -s, c
     );
 
     // 2) 回転の適用
@@ -30,22 +30,24 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 
     // 3) 平行移動の適用
     let translated_pos = vec3<f32>(
-        rotated_pos.x + vertex.i_pos_scale.x,
-        rotated_pos.y + vertex.i_pos_scale.y,
-        vertex.position.z + vertex.i_pos_scale.z
+        rotated_pos.x + vertex.i_pos_angle.x,
+        rotated_pos.y + vertex.i_pos_angle.y,
+        vertex.position.z + vertex.i_pos_angle.z
     );
 
-    // 4) スケールの適用 (平行移動後)
-    let scaled_pos = translated_pos * vertex.i_pos_scale.w;
-
-    // 5) Bevy の既存関数でクリップ座標系へ変換
+    // 4) Bevy の既存関数でクリップ座標系へ変換
     var out: VertexOutput;
     out.clip_position = mesh2d_position_local_to_clip(
         get_world_from_local(0u),
-        vec4<f32>(scaled_pos, 1.0)
+        vec4<f32>(translated_pos, 1.0)
     );
 
-    out.color = vertex.i_color; // フラグメントシェーダへ渡す
+    // 5) 色の適用
+    let hue = angle;
+    let saturation = sin(1.166 * vertex.i_pos_angle.x) * 0.333 + 0.666;
+    let value = 0.7 + saturation * 0.3;
+    out.color = vec4<f32>(hsv_to_rgb(vec3<f32>(hue, saturation, value)), 1.0);
+
     return out;
 }
 

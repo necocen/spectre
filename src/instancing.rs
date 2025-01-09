@@ -79,8 +79,6 @@ impl ExtractComponent for InstanceMaterialData {
 #[repr(C)]
 pub struct InstanceData {
     pub position: Vec3,
-    pub scale: f32,
-    pub color: [f32; 4],
     pub angle: f32,
 }
 
@@ -152,7 +150,6 @@ fn prepare_instance_buffers(
             // 0個で描画しようとすると落ちる
             continue;
         }
-        info!("Instance buffer created: {}", instance_data.len());
         commands.entity(entity).insert(InstanceBuffer {
             buffer,
             length: instance_data.len(),
@@ -194,16 +191,6 @@ impl SpecializedMeshPipeline for CustomPipeline {
                     format: VertexFormat::Float32x4,
                     offset: 0,
                     shader_location: 3, // shader locations 0-2 are taken up by Position, Normal and UV attributes
-                },
-                VertexAttribute {
-                    format: VertexFormat::Float32x4,
-                    offset: VertexFormat::Float32x4.size(),
-                    shader_location: 4,
-                },
-                VertexAttribute {
-                    format: VertexFormat::Float32,
-                    offset: VertexFormat::Float32x4.size() * 2,
-                    shader_location: 5,
                 },
             ],
         });

@@ -9,7 +9,7 @@ use lyon_tessellation::{
     geom::Point, geometry_builder::simple_builder, path::Path, FillOptions, FillTessellator,
     VertexBuffers,
 };
-use rstar::{RTree, AABB};
+use rstar::{primitives::CachedEnvelope, RTree, AABB};
 use utils::{Angle, HexVec};
 
 mod camera;
@@ -29,7 +29,7 @@ fn main() {
         }))
         .add_plugins((camera::CameraPlugin, CustomMaterialPlugin))
         .add_systems(Startup, setup_tiles)
-        // .add_systems(Update, camera_view_system)
+        .add_systems(Update, camera_view_system)
         .run();
 }
 
@@ -37,39 +37,20 @@ fn main() {
 fn setup_tiles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let spectres_manager = SpectresManager::new();
     let mesh = setup_mesh(&mut meshes);
-    let spectres = spectres_manager.spectres.iter().map(to_instance_data).collect();
-    // commands.spawn((Mesh2d(mesh), InstanceMaterialData(vec![]), SpectreTag, NoFrustumCulling));
-    commands.spawn((Mesh2d(mesh), InstanceMaterialData(spectres), SpectreTag, NoFrustumCulling));
-    // commands.insert_resource(spectres_manager);
+    // let spectres = spectres_manager.spectres.iter().map(to_instance_data).collect();
+    commands.spawn((Mesh2d(mesh), InstanceMaterialData(vec![]), SpectreTag, NoFrustumCulling));
+    // commands.spawn((Mesh2d(mesh), InstanceMaterialData(spectres), SpectreTag, NoFrustumCulling));
+    commands.insert_resource(spectres_manager);
 }
 
 // タイルのサイズを設定
 const TILE_SIZE: f32 = 10.0;
 
+#[inline]
 fn to_instance_data(spectre: &Spectre) -> InstanceData {
-    let position = {
-        let anchors = [
-            spectre.point(Anchor::Anchor1),
-            spectre.point(Anchor::Anchor2),
-            spectre.point(Anchor::Anchor3),
-            spectre.point(Anchor::Anchor4),
-        ];
-        let sum = anchors.into_iter().fold(HexVec::ZERO, |acc, p| acc + p);
-        sum.to_vec2() / 4.0
-    };
-
-    // angleから色相を計算（30度ごと）
-    let hue = spectre.angle.value() as f32 * 30.0;
-    // positionから彩度を計算（0.333-1.0）
-    let saturation = f32::sin(1.166 * position.x) * 0.333 + 0.666;
-    // HSVからRGBに変換（明度70%）
-    let color = Color::hsl(hue, saturation, 0.7).with_alpha(1.0);
-
     let anchor_pos = spectre.point(Anchor::Anchor1).to_vec2() * TILE_SIZE;
     InstanceData {
         position: anchor_pos.extend(0.0),
-        scale: 1.0,
-        color: color.to_srgba().to_f32_array(),
         angle: spectre.angle.to_radians(),
     }
 }
@@ -143,11 +124,11 @@ fn camera_view_system(
     let camera_center = transform.translation().truncate();
 
     // スケールを考慮して、ウィンドウサイズから「表示半径」を求める
-    let half_width = window.width() * 0.5 * transform.scale().x * ortho.scale;
-    let half_height = window.height() * 0.5 * transform.scale().y * ortho.scale;
+    let half_width = window.width() * 0.5 * transform.scale().x * ortho.scale * 1.5;
+    let half_height = window.height() * 0.5 * transform.scale().y * ortho.scale * 1.5;
 
-    let min = (camera_center - Vec2::new(half_width, half_height)) / 10.0;
-    let max = (camera_center + Vec2::new(half_width, half_height)) / 10.0;
+    let min = (camera_center - Vec2::new(half_width, half_height)) / TILE_SIZE;
+    let max = (camera_center + Vec2::new(half_width, half_height)) / TILE_SIZE;
     let left = min.x;
     let right = max.x;
     let top = min.y;
@@ -155,34 +136,25 @@ fn camera_view_system(
 
     // ここで計算した可視範囲に合わせてタイルの生成・破棄を行う
     let mut instance_data = Vec::<InstanceData>::with_capacity(100000);
-    // let spectres = manager
-    //     .spectres
-    //     .locate_in_envelope(&AABB::from_corners([left, top], [right , bottom]));
     let spectres = manager
-    .spectres
-    .locate_in_envelope(&AABB::from_corners([f32::NEG_INFINITY, f32::NEG_INFINITY], [f32::INFINITY , f32::INFINITY]));
-
-    for spectre in spectres {
-        instance_data.push(to_instance_data(spectre));
-    }
-    // info!("count: {}", spectres.len());
-    // if entity_query.single().0.is_empty() {
-    //     entity_query.single_mut().0 = instance_data;
-    // }
+        .spectres
+        .locate_in_envelope(&AABB::from_corners([left, top], [right , bottom])).map(|s| to_instance_data(s));
+    instance_data.extend(spectres);
+    entity_query.single_mut().0 = instance_data;
 }
 
 #[derive(Resource)]
 struct SpectresManager {
-    spectres: RTree<Spectre>,
+    spectres: RTree<CachedEnvelope<Spectre>>,
 }
 
 impl SpectresManager {
     pub fn new() -> Self {
-        let cluster = SuperSpectre::new_with_anchor(8, HexVec::ZERO, Anchor::Anchor1, Angle::ZERO);
+        let cluster = SuperSpectre::new_with_anchor(7, HexVec::ZERO, Anchor::Anchor1, Angle::ZERO);
         info!("cluster initialized");
         let mut spectres = RTree::new();
         for spectre in cluster.spectres() {
-            spectres.insert(*spectre);
+            spectres.insert(CachedEnvelope::new(*spectre));
         }
         info!("count: {}", spectres.size());
         Self { spectres }
