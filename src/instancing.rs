@@ -186,13 +186,11 @@ impl SpecializedMeshPipeline for CustomPipeline {
         descriptor.vertex.buffers.push(VertexBufferLayout {
             array_stride: size_of::<InstanceData>() as u64,
             step_mode: VertexStepMode::Instance,
-            attributes: vec![
-                VertexAttribute {
-                    format: VertexFormat::Float32x4,
-                    offset: 0,
-                    shader_location: 3, // shader locations 0-2 are taken up by Position, Normal and UV attributes
-                },
-            ],
+            attributes: vec![VertexAttribute {
+                format: VertexFormat::Float32x4,
+                offset: 0,
+                shader_location: 3, // shader locations 0-2 are taken up by Position, Normal and UV attributes
+            }],
         });
 
         descriptor.fragment.as_mut().unwrap().shader = self.shader.clone();

@@ -7,7 +7,11 @@ impl RTreeObject for Spectre {
     type Envelope = AABB<[f32; 2]>;
 
     fn envelope(&self) -> Self::Envelope {
-        let points = self.all_points().iter().map(|p| p.to_vec2()).collect::<Vec<_>>();
+        let points = self
+            .all_points()
+            .iter()
+            .map(|p| p.to_vec2())
+            .collect::<Vec<_>>();
         let min_x = points.iter().map(|p| p.x).fold(f32::INFINITY, f32::min);
         let min_y = points.iter().map(|p| p.y).fold(f32::INFINITY, f32::min);
         let max_x = points.iter().map(|p| p.x).fold(f32::NEG_INFINITY, f32::max);
