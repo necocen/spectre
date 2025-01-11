@@ -81,30 +81,27 @@ impl Spectre {
         points[anchor_index] = anchor_point;
         let angle = angle - Self::DIRECTIONS[anchor_index];
 
-        // TODO: ここもうちょっと効率化したほうがいいけどね
-
         // アンカーから前方の点を配置
         Self::place_points_before(&mut points[..anchor_index], anchor_point, angle);
 
         // アンカーから後方の点を配置
         Self::place_points_after(&mut points[anchor_index + 1..], anchor_point, angle);
 
-        let min_x = points
-            .iter()
-            .map(|p| p.x.to_f32())
-            .fold(f32::INFINITY, f32::min);
-        let min_y = points
-            .iter()
-            .map(|p| p.y.to_f32())
-            .fold(f32::INFINITY, f32::min);
-        let max_x = points
-            .iter()
-            .map(|p| p.x.to_f32())
-            .fold(f32::NEG_INFINITY, f32::max);
-        let max_y = points
-            .iter()
-            .map(|p| p.y.to_f32())
-            .fold(f32::NEG_INFINITY, f32::max);
+        // Calculate AABB more efficiently using min/max tracking
+        let mut min_x = f32::INFINITY;
+        let mut min_y = f32::INFINITY;
+        let mut max_x = f32::NEG_INFINITY;
+        let mut max_y = f32::NEG_INFINITY;
+
+        for p in points.iter() {
+            let x = p.x.to_f32();
+            let y = p.y.to_f32();
+            min_x = min_x.min(x);
+            min_y = min_y.min(y);
+            max_x = max_x.max(x);
+            max_y = max_y.max(y);
+        }
+
         let aabb = Aabb::new(min_x, min_y, max_x, max_y);
 
         Self {
@@ -152,7 +149,11 @@ impl Spectre {
     }
 
     fn points(&self, index: usize) -> HexVec {
-        // FIXME: memoizeしたほうがいい
+        if index == 0 {
+            return self.anchor1;
+        }
+
+        // Calculate points using a cumulative approach
         let mut p = self.anchor1;
         for i in 0..index {
             let dir = Self::direction_vector(self.angle, Self::DIRECTIONS[i]);
@@ -162,7 +163,16 @@ impl Spectre {
     }
 
     pub fn all_points(&self) -> Vec<HexVec> {
-        (0..Self::VERTEX_COUNT).map(|i| self.points(i)).collect()
+        let mut points = Vec::with_capacity(Self::VERTEX_COUNT);
+        let mut p = self.anchor1;
+        points.push(p);
+
+        for i in 0..Self::VERTEX_COUNT-1 {
+            let dir = Self::direction_vector(self.angle, Self::DIRECTIONS[i]);
+            p += dir;
+            points.push(p);
+        }
+        points
     }
 
     pub fn into_mystic(self) -> Mystic {
@@ -202,15 +212,21 @@ impl Mystic {
         Self { a, b, aabb }
     }
 
-    pub fn spectres(&self) -> impl Iterator<Item = &Spectre> {
-        std::iter::once(&self.a).chain(std::iter::once(&self.b))
-    }
-
     pub fn has_intersection(&self, aabb: &Aabb) -> bool {
-        self.a.has_intersection(aabb) || self.b.has_intersection(aabb)
+        !self.aabb.intersection(aabb).is_empty()
     }
 
-    pub fn spectres_in<'a, 'b: 'a>(&'a self, aabb: &'b Aabb) -> impl Iterator<Item = &'a Spectre> {
-        self.spectres().filter(|s| s.has_intersection(aabb))
+    pub fn spectres_in<'a, 'b: 'a>(&'a self, aabb: &'b Aabb) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
+        if !self.has_intersection(aabb) {
+            return Box::new(std::iter::empty());
+        }
+        let mut spectres = Vec::with_capacity(2);
+        if self.a.has_intersection(aabb) {
+            spectres.push(&self.a);
+        }
+        if self.b.has_intersection(aabb) {
+            spectres.push(&self.b);
+        }
+        Box::new(spectres.into_iter())
     }
 }

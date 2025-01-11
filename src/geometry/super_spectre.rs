@@ -45,6 +45,11 @@ impl Geometry for SuperSpectre {
 }
 
 impl SuperSpectre {
+    const SPECTRE_COUNT: usize = 7;
+    const SPECTRE_REFS: [fn(&SuperSpectre) -> &SpectreLike; Self::SPECTRE_COUNT] = [
+        |s| &s.a, |s| &s.b, |s| &s.c, |s| &s.d, |s| &s.e, |s| &s.f, |s| &s.g,
+    ];
+
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         a: impl Into<SpectreLike>,
@@ -74,15 +79,16 @@ impl SuperSpectre {
         assert!(f.point(Anchor::Anchor3) == g.point(Anchor::Anchor1));
         assert!(g.point(Anchor::Anchor4) == h.point(Anchor::Anchor4));
 
-        let aabb = a
-            .aabb()
-            .union(&b.aabb())
-            .union(&c.aabb())
-            .union(&d.aabb())
-            .union(&e.aabb())
-            .union(&f.aabb())
-            .union(&g.aabb())
-            .union(&h.aabb());
+        // Calculate AABB more efficiently
+        let mut aabb = a.aabb();
+        aabb = aabb.union(&b.aabb());
+        aabb = aabb.union(&c.aabb());
+        aabb = aabb.union(&d.aabb());
+        aabb = aabb.union(&e.aabb());
+        aabb = aabb.union(&f.aabb());
+        aabb = aabb.union(&g.aabb());
+        aabb = aabb.union(&h.aabb());
+
         Self {
             a,
             b,
@@ -318,15 +324,15 @@ impl SuperSpectre {
     }
 
     pub fn into_super_mystic(self) -> SuperMystic {
-        let aabb = self
-            .a
-            .aabb()
-            .union(&self.b.aabb())
-            .union(&self.c.aabb())
-            .union(&self.d.aabb())
-            .union(&self.f.aabb())
-            .union(&self.g.aabb())
-            .union(&self.h.aabb());
+        // Calculate AABB more efficiently
+        let mut aabb = self.a.aabb();
+        aabb = aabb.union(&self.b.aabb());
+        aabb = aabb.union(&self.c.aabb());
+        aabb = aabb.union(&self.d.aabb());
+        aabb = aabb.union(&self.f.aabb());
+        aabb = aabb.union(&self.g.aabb());
+        aabb = aabb.union(&self.h.aabb());
+
         SuperMystic {
             a: self.a,
             b: self.b,
@@ -343,23 +349,28 @@ impl SuperSpectre {
         !self.aabb.intersection(aabb).is_empty()
     }
 
-    pub fn spectres_in<'a, 'b: 'a>(&'a self, aabb: &'b Aabb) -> impl Iterator<Item = &'a Spectre> {
-        [
-            &self.a, &self.b, &self.c, &self.d, &self.e, &self.f, &self.g,
-        ]
-        .into_iter()
-        .flat_map(|s| {
+    pub fn spectres_in<'a, 'b: 'a>(&'a self, aabb: &'b Aabb) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
+        // Early return if no intersection with the entire SuperSpectre
+        if !self.has_intersection(aabb) {
+            return Box::new(std::iter::empty());
+        }
+
+        // Pre-allocate Vec with estimated capacity
+        let mut spectres = Vec::with_capacity(Self::SPECTRE_COUNT * 2);
+
+        // Use static array of field accessors
+        for get_spectre in Self::SPECTRE_REFS.iter() {
+            let s = get_spectre(self);
             if s.has_intersection(aabb) {
-                s.spectres_in(aabb)
-            } else {
-                Box::new(std::iter::empty())
+                spectres.extend(s.spectres_in(aabb));
             }
-        })
-        .chain(if self.h.has_intersection(aabb) {
-            self.h.spectres_in(aabb)
-        } else {
-            Box::new(std::iter::empty())
-        })
+        }
+
+        if self.h.has_intersection(aabb) {
+            spectres.extend(self.h.spectres_in(aabb));
+        }
+
+        Box::new(spectres.into_iter())
     }
 }
 
@@ -404,24 +415,36 @@ impl Geometry for SuperMystic {
 }
 
 impl SuperMystic {
+    const SPECTRE_COUNT: usize = 6;
+    const SPECTRE_REFS: [fn(&SuperMystic) -> &SpectreLike; Self::SPECTRE_COUNT] = [
+        |s| &s.a, |s| &s.b, |s| &s.c, |s| &s.d, |s| &s.f, |s| &s.g,
+    ];
+
     pub fn has_intersection(&self, aabb: &Aabb) -> bool {
         !self.aabb.intersection(aabb).is_empty()
     }
 
-    pub fn spectres_in<'a, 'b: 'a>(&'a self, aabb: &'b Aabb) -> impl Iterator<Item = &'a Spectre> {
-        [&self.a, &self.b, &self.c, &self.d, &self.f, &self.g]
-            .into_iter()
-            .flat_map(|s| {
-                if s.has_intersection(aabb) {
-                    s.spectres_in(aabb)
-                } else {
-                    Box::new(std::iter::empty())
-                }
-            })
-            .chain(if self.h.has_intersection(aabb) {
-                self.h.spectres_in(aabb)
-            } else {
-                Box::new(std::iter::empty())
-            })
+    pub fn spectres_in<'a, 'b: 'a>(&'a self, aabb: &'b Aabb) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
+        // Early return if no intersection with the entire SuperMystic
+        if !self.has_intersection(aabb) {
+            return Box::new(std::iter::empty());
+        }
+
+        // Pre-allocate Vec with estimated capacity
+        let mut spectres = Vec::with_capacity(Self::SPECTRE_COUNT * 2);
+
+        // Use static array of field accessors
+        for get_spectre in Self::SPECTRE_REFS.iter() {
+            let s = get_spectre(self);
+            if s.has_intersection(aabb) {
+                spectres.extend(s.spectres_in(aabb));
+            }
+        }
+
+        if self.h.has_intersection(aabb) {
+            spectres.extend(self.h.spectres_in(aabb));
+        }
+
+        Box::new(spectres.into_iter())
     }
 }

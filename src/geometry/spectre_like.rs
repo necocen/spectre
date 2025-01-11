@@ -69,6 +69,10 @@ impl SpectreLike {
         &'a self,
         aabb: &'b Aabb,
     ) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
+        if !self.has_intersection(aabb) {
+            return Box::new(std::iter::empty());
+        }
+
         match self {
             SpectreLike::Spectre(spectre) => {
                 if spectre.has_intersection(aabb) {
@@ -77,7 +81,7 @@ impl SpectreLike {
                     Box::new(std::iter::empty())
                 }
             }
-            SpectreLike::SuperSpectre(super_spectre) => Box::new(super_spectre.spectres_in(aabb)),
+            SpectreLike::SuperSpectre(super_spectre) => super_spectre.spectres_in(aabb),
         }
     }
 }
@@ -141,9 +145,13 @@ impl MysticLike {
         &'a self,
         aabb: &'b Aabb,
     ) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
+        if !self.has_intersection(aabb) {
+            return Box::new(std::iter::empty());
+        }
+
         match self {
-            MysticLike::Mystic(mystic) => Box::new(mystic.spectres_in(aabb)),
-            MysticLike::SuperMystic(super_mystic) => Box::new(super_mystic.spectres_in(aabb)),
+            MysticLike::Mystic(mystic) => mystic.spectres_in(aabb),
+            MysticLike::SuperMystic(super_mystic) => super_mystic.spectres_in(aabb),
         }
     }
 }
