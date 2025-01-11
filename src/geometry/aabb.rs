@@ -1,12 +1,17 @@
 use bevy::math::Vec2;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Aabb {
     pub min: Vec2,
     pub max: Vec2,
 }
 
 impl Aabb {
+    pub const NULL : Aabb = Aabb {
+        min: Vec2::splat(f32::INFINITY),
+        max: Vec2::splat(f32::NEG_INFINITY),
+    };
+
     pub fn from_min_max(min: Vec2, max: Vec2) -> Self {
         Self { min, max }
     }
@@ -19,12 +24,20 @@ impl Aabb {
     }
 
     pub fn intersection(&self, other: &Self) -> Self {
+        if (self == &Self::NULL) || (other == &Self::NULL) {
+            return Self::NULL;
+        }
         let min = Vec2::new(self.min.x.max(other.min.x), self.min.y.max(other.min.y));
         let max = Vec2::new(self.max.x.min(other.max.x), self.max.y.min(other.max.y));
         Aabb::from_min_max(min, max)
     }
 
     pub fn union(&self, other: &Self) -> Self {
+        if self == &Self::NULL {
+            return *other;
+        } else if other == &Self::NULL {
+            return *self;
+        }
         let min = Vec2::new(self.min.x.min(other.min.x), self.min.y.min(other.min.y));
         let max = Vec2::new(self.max.x.max(other.max.x), self.max.y.max(other.max.y));
         Aabb::from_min_max(min, max)
@@ -90,5 +103,24 @@ mod tests {
         // 点
         let aabb4 = Aabb::new(1.0, 1.0, 1.0, 1.0);
         assert!(aabb4.is_empty());
+    }
+
+    #[test]
+    fn test_null() {
+        // NULLの値が正しく定義されているか
+        assert_eq!(Aabb::NULL.min, Vec2::splat(f32::INFINITY));
+        assert_eq!(Aabb::NULL.max, Vec2::splat(f32::NEG_INFINITY));
+        assert!(Aabb::NULL.is_empty());
+
+        // NULLとの交差演算
+        let aabb = Aabb::new(0.0, 0.0, 2.0, 2.0);
+        assert_eq!(aabb.intersection(&Aabb::NULL), Aabb::NULL);
+        assert_eq!(Aabb::NULL.intersection(&aabb), Aabb::NULL);
+        assert_eq!(Aabb::NULL.intersection(&Aabb::NULL), Aabb::NULL);
+
+        // NULLとの合併演算
+        assert_eq!(aabb.union(&Aabb::NULL), aabb);
+        assert_eq!(Aabb::NULL.union(&aabb), aabb);
+        assert_eq!(Aabb::NULL.union(&Aabb::NULL), Aabb::NULL);
     }
 }

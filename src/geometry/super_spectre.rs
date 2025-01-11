@@ -3,14 +3,14 @@ use crate::utils::{Angle, HexVec};
 use super::{Aabb, Anchor, Geometry, MysticLike, Spectre, SpectreLike};
 
 pub struct SuperSpectre {
-    a: SpectreLike,
-    b: SpectreLike,
-    c: SpectreLike,
-    d: SpectreLike,
-    e: SpectreLike,
-    f: SpectreLike,
-    g: SpectreLike,
-    h: MysticLike,
+    a: Option<SpectreLike>,
+    b: Option<SpectreLike>,
+    c: Option<SpectreLike>,
+    d: Option<SpectreLike>,
+    e: Option<SpectreLike>,
+    f: Option<SpectreLike>,
+    g: Option<SpectreLike>,
+    h: Option<MysticLike>,
     level: usize,
     pub aabb: Aabb,
 }
@@ -18,76 +18,101 @@ pub struct SuperSpectre {
 impl Geometry for SuperSpectre {
     fn point(&self, anchor: Anchor) -> HexVec {
         match anchor {
-            Anchor::Anchor1 => self.g.point(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.point(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.point(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.point(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.as_ref().expect("g must exist").point(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.as_ref().expect("d must exist").point(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.as_ref().expect("b must exist").point(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.as_ref().expect("a must exist").point(Anchor::Anchor2),
         }
     }
 
     fn edge_direction(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self.g.edge_direction(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.edge_direction(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.edge_direction(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.edge_direction(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.as_ref().expect("g must exist").edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.as_ref().expect("d must exist").edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.as_ref().expect("b must exist").edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.as_ref().expect("a must exist").edge_direction(Anchor::Anchor2),
         }
     }
 
     fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self.g.rev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.rev_edge_direction(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.rev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.rev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.as_ref().expect("g must exist").rev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.as_ref().expect("d must exist").rev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.as_ref().expect("b must exist").rev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.as_ref().expect("a must exist").rev_edge_direction(Anchor::Anchor2),
         }
     }
 }
 
 impl SuperSpectre {
     const SPECTRE_COUNT: usize = 7;
-    const SPECTRE_REFS: [fn(&SuperSpectre) -> &SpectreLike; Self::SPECTRE_COUNT] = [
-        |s| &s.a, |s| &s.b, |s| &s.c, |s| &s.d, |s| &s.e, |s| &s.f, |s| &s.g,
+    const SPECTRE_REFS: [fn(&SuperSpectre) -> Option<&SpectreLike>; Self::SPECTRE_COUNT] = [
+        |s| s.a.as_ref(),
+        |s| s.b.as_ref(),
+        |s| s.c.as_ref(),
+        |s| s.d.as_ref(),
+        |s| s.e.as_ref(),
+        |s| s.f.as_ref(),
+        |s| s.g.as_ref(),
     ];
 
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        a: impl Into<SpectreLike>,
-        b: impl Into<SpectreLike>,
-        c: impl Into<SpectreLike>,
-        d: impl Into<SpectreLike>,
-        e: impl Into<SpectreLike>,
-        f: impl Into<SpectreLike>,
-        g: impl Into<SpectreLike>,
-        h: impl Into<MysticLike>,
+        a: Option<impl Into<SpectreLike>>,
+        b: Option<impl Into<SpectreLike>>,
+        c: Option<impl Into<SpectreLike>>,
+        d: Option<impl Into<SpectreLike>>,
+        e: Option<impl Into<SpectreLike>>,
+        f: Option<impl Into<SpectreLike>>,
+        g: Option<impl Into<SpectreLike>>,
+        h: Option<impl Into<MysticLike>>,
         level: usize,
     ) -> Self {
-        let a: SpectreLike = a.into();
-        let b: SpectreLike = b.into();
-        let c: SpectreLike = c.into();
-        let d: SpectreLike = d.into();
-        let e: SpectreLike = e.into();
-        let f: SpectreLike = f.into();
-        let g: SpectreLike = g.into();
-        let h: MysticLike = h.into();
-        assert!(h.point(Anchor::Anchor1) == a.point(Anchor::Anchor1));
-        assert!(a.point(Anchor::Anchor3) == b.point(Anchor::Anchor1));
-        assert!(b.point(Anchor::Anchor4) == c.point(Anchor::Anchor2));
-        assert!(c.point(Anchor::Anchor3) == d.point(Anchor::Anchor1));
-        assert!(d.point(Anchor::Anchor3) == e.point(Anchor::Anchor1));
-        assert!(e.point(Anchor::Anchor4) == f.point(Anchor::Anchor2));
-        assert!(f.point(Anchor::Anchor3) == g.point(Anchor::Anchor1));
-        assert!(g.point(Anchor::Anchor4) == h.point(Anchor::Anchor4));
+        let a = a.map(Into::into);
+        let b = b.map(Into::into);
+        let c = c.map(Into::into);
+        let d = d.map(Into::into);
+        let e = e.map(Into::into);
+        let f = f.map(Into::into);
+        let g = g.map(Into::into);
+        let h = h.map(Into::into);
 
-        // Calculate AABB more efficiently
-        let mut aabb = a.aabb();
-        aabb = aabb.union(&b.aabb());
-        aabb = aabb.union(&c.aabb());
-        aabb = aabb.union(&d.aabb());
-        aabb = aabb.union(&e.aabb());
-        aabb = aabb.union(&f.aabb());
-        aabb = aabb.union(&g.aabb());
-        aabb = aabb.union(&h.aabb());
+        // Assertions only if both parts exist
+        if let (Some(h), Some(a)) = (&h, &a) {
+            assert!(h.point(Anchor::Anchor1) == a.point(Anchor::Anchor1));
+        }
+        if let (Some(a), Some(b)) = (&a, &b) {
+            assert!(a.point(Anchor::Anchor3) == b.point(Anchor::Anchor1));
+        }
+        if let (Some(b), Some(c)) = (&b, &c) {
+            assert!(b.point(Anchor::Anchor4) == c.point(Anchor::Anchor2));
+        }
+        if let (Some(c), Some(d)) = (&c, &d) {
+            assert!(c.point(Anchor::Anchor3) == d.point(Anchor::Anchor1));
+        }
+        if let (Some(d), Some(e)) = (&d, &e) {
+            assert!(d.point(Anchor::Anchor3) == e.point(Anchor::Anchor1));
+        }
+        if let (Some(e), Some(f)) = (&e, &f) {
+            assert!(e.point(Anchor::Anchor4) == f.point(Anchor::Anchor2));
+        }
+        if let (Some(f), Some(g)) = (&f, &g) {
+            assert!(f.point(Anchor::Anchor3) == g.point(Anchor::Anchor1));
+        }
+        if let (Some(g), Some(h)) = (&g, &h) {
+            assert!(g.point(Anchor::Anchor4) == h.point(Anchor::Anchor4));
+        }
+
+        // Calculate AABB only for existing parts
+        let mut aabb = Aabb::NULL;
+        if let Some(a) = &a { aabb = aabb.union(&a.aabb()); }
+        if let Some(b) = &b { aabb = aabb.union(&b.aabb()); }
+        if let Some(c) = &c { aabb = aabb.union(&c.aabb()); }
+        if let Some(d) = &d { aabb = aabb.union(&d.aabb()); }
+        if let Some(e) = &e { aabb = aabb.union(&e.aabb()); }
+        if let Some(f) = &f { aabb = aabb.union(&f.aabb()); }
+        if let Some(g) = &g { aabb = aabb.union(&g.aabb()); }
+        if let Some(h) = &h { aabb = aabb.union(&h.aabb()); }
 
         Self {
             a,
@@ -124,7 +149,7 @@ impl SuperSpectre {
                     let e = d.adjacent_spectre(Anchor::Anchor3, Anchor::Anchor1);
                     let f = e.adjacent_spectre(Anchor::Anchor4, Anchor::Anchor2);
                     let h = h.into_mystic();
-                    Self::new(a, b, c, d, e, f, g, h, level)
+                    Self::new(Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), level)
                 }
                 Anchor::Anchor2 => {
                     // D2
@@ -137,7 +162,7 @@ impl SuperSpectre {
                     let b = a.adjacent_spectre(Anchor::Anchor3, Anchor::Anchor1);
                     let c = b.adjacent_spectre(Anchor::Anchor4, Anchor::Anchor2);
                     let h = h.into_mystic();
-                    Self::new(a, b, c, d, e, f, g, h, level)
+                    Self::new(Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), level)
                 }
                 Anchor::Anchor3 => {
                     // B3
@@ -150,7 +175,7 @@ impl SuperSpectre {
                     let h = g.adjacent_spectre(Anchor::Anchor4, Anchor::Anchor4);
                     let a = h.adjacent_spectre(Anchor::Anchor1, Anchor::Anchor1);
                     let h = h.into_mystic();
-                    Self::new(a, b, c, d, e, f, g, h, level)
+                    Self::new(Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), level)
                 }
                 Anchor::Anchor4 => {
                     // A2
@@ -163,7 +188,7 @@ impl SuperSpectre {
                     let g = f.adjacent_spectre(Anchor::Anchor3, Anchor::Anchor1);
                     let h = g.adjacent_spectre(Anchor::Anchor4, Anchor::Anchor4);
                     let h = h.into_mystic();
-                    Self::new(a, b, c, d, e, f, g, h, level)
+                    Self::new(Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), level)
                 }
             }
         } else if level % 2 == 0 {
@@ -185,7 +210,7 @@ impl SuperSpectre {
                     let h = a
                         .adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor1)
                         .into_super_mystic();
-                    Self::new(a, b, c, d, e, f, g, h, level)
+                    Self::new(Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), level)
                 }
                 Anchor::Anchor2 => {
                     let d = SuperSpectre::new_with_anchor(
@@ -202,7 +227,7 @@ impl SuperSpectre {
                     let f = g.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
                     let e = f.adjacent_super_spectre(Anchor::Anchor2, Anchor::Anchor4);
                     let h = h.into_super_mystic();
-                    Self::new(a, b, c, d, e, f, g, h, level)
+                    Self::new(Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), level)
                 }
                 Anchor::Anchor3 => {
                     let b = SuperSpectre::new_with_anchor(
@@ -219,7 +244,7 @@ impl SuperSpectre {
                     let d = e.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
                     let c = d.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
                     let h = h.into_super_mystic();
-                    Self::new(a, b, c, d, e, f, g, h, level)
+                    Self::new(Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), level)
                 }
                 Anchor::Anchor4 => {
                     let a = SuperSpectre::new_with_anchor(
@@ -236,7 +261,7 @@ impl SuperSpectre {
                     let c = d.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
                     let b = c.adjacent_super_spectre(Anchor::Anchor2, Anchor::Anchor4);
                     let h = h.into_super_mystic();
-                    Self::new(a, b, c, d, e, f, g, h, level)
+                    Self::new(Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), level)
                 }
             }
         } else {
@@ -257,7 +282,7 @@ impl SuperSpectre {
                     let e = d.adjacent_super_spectre(Anchor::Anchor3, Anchor::Anchor1);
                     let f = e.adjacent_super_spectre(Anchor::Anchor4, Anchor::Anchor2);
                     let h = h.into_super_mystic();
-                    Self::new(a, b, c, d, e, f, g, h, level)
+                    Self::new(Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), level)
                 }
                 Anchor::Anchor2 => {
                     let d = SuperSpectre::new_with_anchor(
@@ -274,7 +299,7 @@ impl SuperSpectre {
                     let b = a.adjacent_super_spectre(Anchor::Anchor3, Anchor::Anchor1);
                     let c = b.adjacent_super_spectre(Anchor::Anchor4, Anchor::Anchor2);
                     let h = h.into_super_mystic();
-                    Self::new(a, b, c, d, e, f, g, h, level)
+                    Self::new(Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), level)
                 }
                 Anchor::Anchor3 => {
                     let b = SuperSpectre::new_with_anchor(
@@ -291,7 +316,7 @@ impl SuperSpectre {
                     let h = g.adjacent_super_spectre(Anchor::Anchor4, Anchor::Anchor4);
                     let a = h.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor1);
                     let h = h.into_super_mystic();
-                    Self::new(a, b, c, d, e, f, g, h, level)
+                    Self::new(Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), level)
                 }
                 Anchor::Anchor4 => {
                     let a = SuperSpectre::new_with_anchor(
@@ -308,7 +333,7 @@ impl SuperSpectre {
                     let g = f.adjacent_super_spectre(Anchor::Anchor3, Anchor::Anchor1);
                     let h = g.adjacent_super_spectre(Anchor::Anchor4, Anchor::Anchor4);
                     let h = h.into_super_mystic();
-                    Self::new(a, b, c, d, e, f, g, h, level)
+                    Self::new(Some(a), Some(b), Some(c), Some(d), Some(e), Some(f), Some(g), Some(h), level)
                 }
             }
         }
@@ -324,14 +349,15 @@ impl SuperSpectre {
     }
 
     pub fn into_super_mystic(self) -> SuperMystic {
-        // Calculate AABB more efficiently
-        let mut aabb = self.a.aabb();
-        aabb = aabb.union(&self.b.aabb());
-        aabb = aabb.union(&self.c.aabb());
-        aabb = aabb.union(&self.d.aabb());
-        aabb = aabb.union(&self.f.aabb());
-        aabb = aabb.union(&self.g.aabb());
-        aabb = aabb.union(&self.h.aabb());
+        // Calculate AABB only for existing parts
+        let mut aabb = Aabb::NULL;
+        if let Some(a) = &self.a { aabb = aabb.union(&a.aabb()); }
+        if let Some(b) = &self.b { aabb = aabb.union(&b.aabb()); }
+        if let Some(c) = &self.c { aabb = aabb.union(&c.aabb()); }
+        if let Some(d) = &self.d { aabb = aabb.union(&d.aabb()); }
+        if let Some(f) = &self.f { aabb = aabb.union(&f.aabb()); }
+        if let Some(g) = &self.g { aabb = aabb.union(&g.aabb()); }
+        if let Some(h) = &self.h { aabb = aabb.union(&h.aabb()); }
 
         SuperMystic {
             a: self.a,
@@ -360,14 +386,17 @@ impl SuperSpectre {
 
         // Use static array of field accessors
         for get_spectre in Self::SPECTRE_REFS.iter() {
-            let s = get_spectre(self);
-            if s.has_intersection(aabb) {
-                spectres.extend(s.spectres_in(aabb));
+            if let Some(s) = get_spectre(self) {
+                if s.has_intersection(aabb) {
+                    spectres.extend(s.spectres_in(aabb));
+                }
             }
         }
 
-        if self.h.has_intersection(aabb) {
-            spectres.extend(self.h.spectres_in(aabb));
+        if let Some(h) = &self.h {
+            if h.has_intersection(aabb) {
+                spectres.extend(h.spectres_in(aabb));
+            }
         }
 
         Box::new(spectres.into_iter())
@@ -375,49 +404,54 @@ impl SuperSpectre {
 }
 
 pub struct SuperMystic {
-    a: SpectreLike,
-    b: SpectreLike,
-    c: SpectreLike,
-    d: SpectreLike,
-    f: SpectreLike,
-    g: SpectreLike,
-    h: MysticLike,
+    a: Option<SpectreLike>,
+    b: Option<SpectreLike>,
+    c: Option<SpectreLike>,
+    d: Option<SpectreLike>,
+    f: Option<SpectreLike>,
+    g: Option<SpectreLike>,
+    h: Option<MysticLike>,
     pub aabb: Aabb,
 }
 
 impl Geometry for SuperMystic {
     fn point(&self, anchor: Anchor) -> HexVec {
         match anchor {
-            Anchor::Anchor1 => self.g.point(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.point(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.point(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.point(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.as_ref().expect("g must exist").point(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.as_ref().expect("d must exist").point(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.as_ref().expect("b must exist").point(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.as_ref().expect("a must exist").point(Anchor::Anchor2),
         }
     }
 
     fn edge_direction(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self.g.edge_direction(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.edge_direction(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.edge_direction(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.edge_direction(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.as_ref().expect("g must exist").edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.as_ref().expect("d must exist").edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.as_ref().expect("b must exist").edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.as_ref().expect("a must exist").edge_direction(Anchor::Anchor2),
         }
     }
 
     fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self.g.rev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.rev_edge_direction(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.rev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.rev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.as_ref().expect("g must exist").rev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.as_ref().expect("d must exist").rev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.as_ref().expect("b must exist").rev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.as_ref().expect("a must exist").rev_edge_direction(Anchor::Anchor2),
         }
     }
 }
 
 impl SuperMystic {
     const SPECTRE_COUNT: usize = 6;
-    const SPECTRE_REFS: [fn(&SuperMystic) -> &SpectreLike; Self::SPECTRE_COUNT] = [
-        |s| &s.a, |s| &s.b, |s| &s.c, |s| &s.d, |s| &s.f, |s| &s.g,
+    const SPECTRE_REFS: [fn(&SuperMystic) -> Option<&SpectreLike>; Self::SPECTRE_COUNT] = [
+        |s| s.a.as_ref(),
+        |s| s.b.as_ref(),
+        |s| s.c.as_ref(),
+        |s| s.d.as_ref(),
+        |s| s.f.as_ref(),
+        |s| s.g.as_ref(),
     ];
 
     pub fn has_intersection(&self, aabb: &Aabb) -> bool {
@@ -435,14 +469,17 @@ impl SuperMystic {
 
         // Use static array of field accessors
         for get_spectre in Self::SPECTRE_REFS.iter() {
-            let s = get_spectre(self);
-            if s.has_intersection(aabb) {
-                spectres.extend(s.spectres_in(aabb));
+            if let Some(s) = get_spectre(self) {
+                if s.has_intersection(aabb) {
+                    spectres.extend(s.spectres_in(aabb));
+                }
             }
         }
 
-        if self.h.has_intersection(aabb) {
-            spectres.extend(self.h.spectres_in(aabb));
+        if let Some(h) = &self.h {
+            if h.has_intersection(aabb) {
+                spectres.extend(h.spectres_in(aabb));
+            }
         }
 
         Box::new(spectres.into_iter())
