@@ -4,18 +4,16 @@ use bevy::{
     render::{mesh::PrimitiveTopology, view::NoFrustumCulling},
     window::PrimaryWindow,
 };
-use geometry::{Aabb, Anchor, Geometry as _, Spectre, SuperSpectre};
-use instancing::{CustomMaterialPlugin, InstanceData, InstanceMaterialData};
 use lyon_tessellation::{
     geom::Point, geometry_builder::simple_builder, path::Path, FillOptions, FillTessellator,
     VertexBuffers,
 };
-use utils::{Angle, HexVec};
-
-mod camera;
-mod geometry;
-mod instancing;
-mod utils;
+use spectre::{
+    camera::CameraPlugin,
+    geometry::{Aabb, Anchor, Geometry as _, Spectre, SuperSpectre},
+    instancing::{CustomMaterialPlugin, InstanceData, InstanceMaterialData},
+    utils::{Angle, HexVec},
+};
 
 fn main() {
     App::new()
@@ -27,7 +25,7 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins((camera::CameraPlugin, CustomMaterialPlugin))
+        .add_plugins((CameraPlugin, CustomMaterialPlugin))
         .add_systems(Startup, setup_tiles)
         .add_systems(Update, camera_view_system)
         .run();

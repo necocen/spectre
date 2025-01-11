@@ -8,6 +8,13 @@ bevy = "0.15.0"
 bytemuck = { version = "1.21.0", features = ["derive"] }
 lyon_tessellation = "1.0.15"
 
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "super_spectre_bench"
+harness = false
+
 [profile.release-wasm]
 panic = "abort"
 inherits = "release"

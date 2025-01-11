@@ -167,7 +167,7 @@ impl Spectre {
         let mut p = self.anchor1;
         points.push(p);
 
-        for i in 0..Self::VERTEX_COUNT-1 {
+        for i in 0..Self::VERTEX_COUNT - 1 {
             let dir = Self::direction_vector(self.angle, Self::DIRECTIONS[i]);
             p += dir;
             points.push(p);
@@ -216,7 +216,10 @@ impl Mystic {
         !self.aabb.intersection(aabb).is_empty()
     }
 
-    pub fn spectres_in<'a, 'b: 'a>(&'a self, aabb: &'b Aabb) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
+    pub fn spectres_in<'a, 'b: 'a>(
+        &'a self,
+        aabb: &'b Aabb,
+    ) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
         if !self.has_intersection(aabb) {
             return Box::new(std::iter::empty());
         }
