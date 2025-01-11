@@ -84,3 +84,84 @@ impl From<i32> for Angle {
         Self::new(value)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::f32::consts::PI;
+
+    #[test]
+    fn test_constructors() {
+        assert_eq!(Angle::ZERO.value(), 0);
+        assert_eq!(Angle::new(0).value(), 0);
+        assert_eq!(Angle::new(12).value(), 0);
+        assert_eq!(Angle::new(-1).value(), 11);
+        assert_eq!(Angle::new(13).value(), 1);
+    }
+
+    #[test]
+    fn test_value_and_radians() {
+        let angle = Angle::new(3);
+        assert_eq!(angle.value(), 3);
+        assert_eq!(angle.to_radians(), PI / 2.0); // 3 * PI/6 = PI/2
+
+        let angle = Angle::new(6);
+        assert_eq!(angle.value(), 6);
+        assert_eq!(angle.to_radians(), PI); // 6 * PI/6 = PI
+    }
+
+    #[test]
+    fn test_opposite() {
+        let angle = Angle::new(1);
+        assert_eq!(angle.opposite().value(), 7);
+
+        let angle = Angle::new(7);
+        assert_eq!(angle.opposite().value(), 1);
+
+        let angle = Angle::new(0);
+        assert_eq!(angle.opposite().value(), 6);
+    }
+
+    #[test]
+    fn test_arithmetic() {
+        // 加算
+        assert_eq!((Angle::new(3) + Angle::new(4)).value(), 7);
+        assert_eq!((Angle::new(8) + Angle::new(5)).value(), 1);
+
+        // 減算
+        assert_eq!((Angle::new(7) - Angle::new(4)).value(), 3);
+        assert_eq!((Angle::new(2) - Angle::new(5)).value(), 9);
+
+        // 否定
+        assert_eq!((-Angle::new(3)).value(), 9);
+        assert_eq!((-Angle::new(0)).value(), 0);
+    }
+
+    #[test]
+    fn test_assign_operators() {
+        // 加算代入
+        let mut angle = Angle::new(3);
+        angle += Angle::new(4);
+        assert_eq!(angle.value(), 7);
+
+        // 減算代入
+        let mut angle = Angle::new(7);
+        angle -= Angle::new(4);
+        assert_eq!(angle.value(), 3);
+    }
+
+    #[test]
+    fn test_from() {
+        // From<u8>
+        let angle: Angle = 3u8.into();
+        assert_eq!(angle.value(), 3);
+        let angle: Angle = 13u8.into();
+        assert_eq!(angle.value(), 1);
+
+        // From<i32>
+        let angle: Angle = 3i32.into();
+        assert_eq!(angle.value(), 3);
+        let angle: Angle = (-1i32).into();
+        assert_eq!(angle.value(), 11);
+    }
+}

@@ -131,3 +131,108 @@ impl Mul<i32> for HexValue {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_constructors() {
+        let value = HexValue::new(1, 2);
+        assert_eq!(value.rational, 1);
+        assert_eq!(value.irrational, 2);
+
+        assert_eq!(HexValue::ZERO.rational, 0);
+        assert_eq!(HexValue::ZERO.irrational, 0);
+    }
+
+    #[test]
+    fn test_cos() {
+        // 0度 = cos(0°) = 1
+        let cos0 = HexValue::cos(Angle::new(0));
+        assert_eq!(cos0, HexValue::new(2, 0));
+        assert!((cos0.to_f32() - 1.0).abs() < 1e-6);
+
+        // 60度 = cos(60°) = 1/2
+        let cos60 = HexValue::cos(Angle::new(2));
+        assert_eq!(cos60, HexValue::new(1, 0));
+        assert!((cos60.to_f32() - 0.5).abs() < 1e-6);
+
+        // 90度 = cos(90°) = 0
+        let cos90 = HexValue::cos(Angle::new(3));
+        assert_eq!(cos90, HexValue::new(0, 0));
+        assert!((cos90.to_f32() - 0.0).abs() < 1e-6);
+
+        // 180度 = cos(180°) = -1
+        let cos180 = HexValue::cos(Angle::new(6));
+        assert_eq!(cos180, HexValue::new(-2, 0));
+        assert!((cos180.to_f32() - (-1.0)).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_sin() {
+        // 0度 = sin(0°) = 0
+        let sin0 = HexValue::sin(Angle::new(0));
+        assert_eq!(sin0, HexValue::new(0, 0));
+        assert!((sin0.to_f32() - 0.0).abs() < 1e-6);
+
+        // 60度 = sin(60°) = √3/2
+        let sin60 = HexValue::sin(Angle::new(2));
+        assert_eq!(sin60, HexValue::new(0, 1));
+        assert!((sin60.to_f32() - (3.0_f32.sqrt() / 2.0)).abs() < 1e-6);
+
+        // 90度 = sin(90°) = 1
+        let sin90 = HexValue::sin(Angle::new(3));
+        assert_eq!(sin90, HexValue::new(2, 0));
+        assert!((sin90.to_f32() - 1.0).abs() < 1e-6);
+
+        // 180度 = sin(180°) = 0
+        let sin180 = HexValue::sin(Angle::new(6));
+        assert_eq!(sin180, HexValue::new(0, 0));
+        assert!((sin180.to_f32() - 0.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_arithmetic() {
+        // 加算
+        let a = HexValue::new(1, 2);
+        let b = HexValue::new(3, 4);
+        assert_eq!(a + b, HexValue::new(4, 6));
+
+        // 減算
+        assert_eq!(a - b, HexValue::new(-2, -2));
+
+        // 否定
+        assert_eq!(-a, HexValue::new(-1, -2));
+
+        // 乗算
+        assert_eq!(a * 3, HexValue::new(3, 6));
+    }
+
+    #[test]
+    fn test_assign_operators() {
+        // 加算代入
+        let mut a = HexValue::new(1, 2);
+        a += HexValue::new(3, 4);
+        assert_eq!(a, HexValue::new(4, 6));
+
+        // 減算代入
+        let mut b = HexValue::new(3, 4);
+        b -= HexValue::new(1, 2);
+        assert_eq!(b, HexValue::new(2, 2));
+    }
+
+    #[test]
+    fn test_display() {
+        assert_eq!(HexValue::new(1, 2).to_string(), "1/2 + 2 * 2/√3");
+        assert_eq!(HexValue::new(-1, -2).to_string(), "-1/2 + 2 * -2/√3");
+        assert_eq!(HexValue::ZERO.to_string(), "0/2 + 2 * 0/√3");
+    }
+
+    #[test]
+    fn test_to_f32() {
+        let value = HexValue::new(1, 1);
+        let expected = 0.5 + 3.0_f32.sqrt() / 2.0;
+        assert!((value.to_f32() - expected).abs() < 1e-6);
+    }
+}
