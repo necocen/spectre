@@ -7,7 +7,6 @@ edition = "2021"
 bevy = "0.15.0"
 bytemuck = { version = "1.21.0", features = ["derive"] }
 lyon_tessellation = "1.0.15"
-rstar = "0.12.2"
 
 [profile.release-wasm]
 panic = "abort"

@@ -1,15 +1,15 @@
 use bevy::{
     asset::RenderAssetUsages,
     prelude::*,
-    render::{mesh::PrimitiveTopology, view::NoFrustumCulling}, window::PrimaryWindow,
+    render::{mesh::PrimitiveTopology, view::NoFrustumCulling},
+    window::PrimaryWindow,
 };
-use geometry::{Anchor, Geometry as _, Spectre, SuperSpectre};
+use geometry::{Aabb, Anchor, Geometry as _, Spectre, SuperSpectre};
 use instancing::{CustomMaterialPlugin, InstanceData, InstanceMaterialData};
 use lyon_tessellation::{
     geom::Point, geometry_builder::simple_builder, path::Path, FillOptions, FillTessellator,
     VertexBuffers,
 };
-use rstar::{primitives::CachedEnvelope, RTree, AABB};
 use utils::{Angle, HexVec};
 
 mod camera;
@@ -38,7 +38,12 @@ fn setup_tiles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let spectres_manager = SpectresManager::new();
     let mesh = setup_mesh(&mut meshes);
     // let spectres = spectres_manager.spectres.iter().map(to_instance_data).collect();
-    commands.spawn((Mesh2d(mesh), InstanceMaterialData(vec![]), SpectreTag, NoFrustumCulling));
+    commands.spawn((
+        Mesh2d(mesh),
+        InstanceMaterialData(vec![]),
+        SpectreTag,
+        NoFrustumCulling,
+    ));
     // commands.spawn((Mesh2d(mesh), InstanceMaterialData(spectres), SpectreTag, NoFrustumCulling));
     commands.insert_resource(spectres_manager);
 }
@@ -134,28 +139,24 @@ fn camera_view_system(
     let bottom = max.y;
 
     // ここで計算した可視範囲に合わせてタイルの生成・破棄を行う
-    let mut instance_data = Vec::<InstanceData>::with_capacity((entity_query.single().0.len() as f64 * 1.1).ceil() as usize);
-    let spectres = manager
-        .spectres
-        .locate_in_envelope(&AABB::from_corners([left, top], [right , bottom])).map(|s| to_instance_data(s));
+    let mut instance_data = Vec::<InstanceData>::with_capacity(
+        (entity_query.single().0.len() as f64 * 1.1).ceil() as usize,
+    );
+    let aabb = Aabb::new(left, top, right, bottom);
+    let spectres = manager.spectres.spectres_in(&aabb).map(to_instance_data);
     instance_data.extend(spectres);
+
     entity_query.single_mut().0 = instance_data;
 }
 
 #[derive(Resource)]
 struct SpectresManager {
-    spectres: RTree<CachedEnvelope<Spectre>>,
+    spectres: SuperSpectre,
 }
 
 impl SpectresManager {
     pub fn new() -> Self {
-        let cluster = SuperSpectre::new_with_anchor(7, HexVec::ZERO, Anchor::Anchor1, Angle::ZERO);
-        info!("cluster initialized");
-        let mut spectres = RTree::new();
-        for spectre in cluster.spectres() {
-            spectres.insert(CachedEnvelope::new(*spectre));
-        }
-        info!("count: {}", spectres.size());
+        let spectres = SuperSpectre::new_with_anchor(8, HexVec::ZERO, Anchor::Anchor1, Angle::ZERO);
         Self { spectres }
     }
 }

@@ -1,24 +1,6 @@
 use crate::utils::{Angle, HexValue, HexVec};
-use rstar::{RTreeObject, AABB};
 
-use super::{Anchor, Geometry};
-
-impl RTreeObject for Spectre {
-    type Envelope = AABB<[f32; 2]>;
-
-    fn envelope(&self) -> Self::Envelope {
-        let points = self
-            .all_points()
-            .iter()
-            .map(|p| p.to_vec2())
-            .collect::<Vec<_>>();
-        let min_x = points.iter().map(|p| p.x).fold(f32::INFINITY, f32::min);
-        let min_y = points.iter().map(|p| p.y).fold(f32::INFINITY, f32::min);
-        let max_x = points.iter().map(|p| p.x).fold(f32::NEG_INFINITY, f32::max);
-        let max_y = points.iter().map(|p| p.y).fold(f32::NEG_INFINITY, f32::max);
-        AABB::from_corners([min_x, min_y], [max_x, max_y])
-    }
-}
+use super::{Aabb, Anchor, Geometry};
 
 /// タイルの形状を表す
 #[derive(Clone, Copy)]
@@ -27,6 +9,8 @@ pub struct Spectre {
     pub angle: Angle,
     /// アンカー1の座標
     pub anchor1: HexVec,
+    /// bounding box
+    pub aabb: Aabb,
 }
 
 impl Geometry for Spectre {
@@ -102,9 +86,31 @@ impl Spectre {
         // アンカーから前方の点を配置
         Self::place_points_before(&mut points[..anchor_index], anchor_point, angle);
 
+        // アンカーから後方の点を配置
+        Self::place_points_after(&mut points[anchor_index + 1..], anchor_point, angle);
+
+        let min_x = points
+            .iter()
+            .map(|p| p.x.to_f32())
+            .fold(f32::INFINITY, f32::min);
+        let min_y = points
+            .iter()
+            .map(|p| p.y.to_f32())
+            .fold(f32::INFINITY, f32::min);
+        let max_x = points
+            .iter()
+            .map(|p| p.x.to_f32())
+            .fold(f32::NEG_INFINITY, f32::max);
+        let max_y = points
+            .iter()
+            .map(|p| p.y.to_f32())
+            .fold(f32::NEG_INFINITY, f32::max);
+        let aabb = Aabb::new(min_x, min_y, max_x, max_y);
+
         Self {
             angle,
             anchor1: points[0],
+            aabb,
         }
     }
 
@@ -114,6 +120,16 @@ impl Spectre {
         for (i, point) in points.iter_mut().enumerate().rev() {
             let dir = Self::direction_vector(angle, Self::DIRECTIONS[i]);
             p -= dir;
+            *point = p;
+        }
+    }
+
+    /// アンカーより後方の点を配置する（反時計回り）
+    fn place_points_after(points: &mut [HexVec], start: HexVec, angle: Angle) {
+        let mut p = start;
+        for (i, point) in points.iter_mut().enumerate() {
+            let dir = Self::direction_vector(angle, Self::DIRECTIONS[i]);
+            p += dir;
             *point = p;
         }
     }
@@ -152,13 +168,18 @@ impl Spectre {
     pub fn into_mystic(self) -> Mystic {
         let a = self;
         let b = Spectre::new_with_anchor_at(a.points(1), 13, a.angle + Angle::new(9));
-        Mystic { a, b }
+        Mystic::new(a, b)
+    }
+
+    pub fn has_intersection(&self, aabb: &Aabb) -> bool {
+        !self.aabb.intersection(aabb).is_empty()
     }
 }
 
 pub struct Mystic {
     a: Spectre,
     b: Spectre,
+    pub aabb: Aabb,
 }
 
 impl Geometry for Mystic {
@@ -176,7 +197,20 @@ impl Geometry for Mystic {
 }
 
 impl Mystic {
+    pub fn new(a: Spectre, b: Spectre) -> Self {
+        let aabb = a.aabb.union(&b.aabb);
+        Self { a, b, aabb }
+    }
+
     pub fn spectres(&self) -> impl Iterator<Item = &Spectre> {
         std::iter::once(&self.a).chain(std::iter::once(&self.b))
+    }
+
+    pub fn has_intersection(&self, aabb: &Aabb) -> bool {
+        self.a.has_intersection(aabb) || self.b.has_intersection(aabb)
+    }
+
+    pub fn spectres_in<'a, 'b: 'a>(&'a self, aabb: &'b Aabb) -> impl Iterator<Item = &'a Spectre> {
+        self.spectres().filter(|s| s.has_intersection(aabb))
     }
 }

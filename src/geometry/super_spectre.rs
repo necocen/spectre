@@ -1,6 +1,6 @@
 use crate::utils::{Angle, HexVec};
 
-use super::{Anchor, Geometry, MysticLike, Spectre, SpectreLike};
+use super::{Aabb, Anchor, Geometry, MysticLike, Spectre, SpectreLike};
 
 pub struct SuperSpectre {
     a: SpectreLike,
@@ -12,6 +12,7 @@ pub struct SuperSpectre {
     g: SpectreLike,
     h: MysticLike,
     level: usize,
+    pub aabb: Aabb,
 }
 
 impl Geometry for SuperSpectre {
@@ -72,6 +73,16 @@ impl SuperSpectre {
         assert!(e.point(Anchor::Anchor4) == f.point(Anchor::Anchor2));
         assert!(f.point(Anchor::Anchor3) == g.point(Anchor::Anchor1));
         assert!(g.point(Anchor::Anchor4) == h.point(Anchor::Anchor4));
+
+        let aabb = a
+            .aabb()
+            .union(&b.aabb())
+            .union(&c.aabb())
+            .union(&d.aabb())
+            .union(&e.aabb())
+            .union(&f.aabb())
+            .union(&g.aabb())
+            .union(&h.aabb());
         Self {
             a,
             b,
@@ -82,6 +93,7 @@ impl SuperSpectre {
             g,
             h,
             level,
+            aabb,
         }
     }
 
@@ -296,7 +308,7 @@ impl SuperSpectre {
         }
     }
 
-    fn adjacent_super_spectre(&self, from_anchor: Anchor, to_anchor: Anchor) -> SuperSpectre {
+    pub fn adjacent_super_spectre(&self, from_anchor: Anchor, to_anchor: Anchor) -> SuperSpectre {
         // 新しいSpectreの角度を計算
         let rotation =
             self.edge_direction(to_anchor) - self.rev_edge_direction(to_anchor).opposite();
@@ -305,7 +317,16 @@ impl SuperSpectre {
         SuperSpectre::new_with_anchor(self.level, self.point(from_anchor), to_anchor, angle)
     }
 
-    fn into_super_mystic(self) -> SuperMystic {
+    pub fn into_super_mystic(self) -> SuperMystic {
+        let aabb = self
+            .a
+            .aabb()
+            .union(&self.b.aabb())
+            .union(&self.c.aabb())
+            .union(&self.d.aabb())
+            .union(&self.f.aabb())
+            .union(&self.g.aabb())
+            .union(&self.h.aabb());
         SuperMystic {
             a: self.a,
             b: self.b,
@@ -314,22 +335,31 @@ impl SuperSpectre {
             f: self.f,
             g: self.g,
             h: self.h,
+            aabb,
         }
     }
 
-    pub fn spectres(&self) -> impl Iterator<Item = &Spectre> {
-        vec![
-            self.a.spectres(),
-            self.b.spectres(),
-            self.c.spectres(),
-            self.d.spectres(),
-            self.e.spectres(),
-            self.f.spectres(),
-            self.g.spectres(),
-            self.h.spectres(),
+    pub fn has_intersection(&self, aabb: &Aabb) -> bool {
+        !self.aabb.intersection(aabb).is_empty()
+    }
+
+    pub fn spectres_in<'a, 'b: 'a>(&'a self, aabb: &'b Aabb) -> impl Iterator<Item = &'a Spectre> {
+        [
+            &self.a, &self.b, &self.c, &self.d, &self.e, &self.f, &self.g,
         ]
         .into_iter()
-        .flatten()
+        .flat_map(|s| {
+            if s.has_intersection(aabb) {
+                s.spectres_in(aabb)
+            } else {
+                Box::new(std::iter::empty())
+            }
+        })
+        .chain(if self.h.has_intersection(aabb) {
+            self.h.spectres_in(aabb)
+        } else {
+            Box::new(std::iter::empty())
+        })
     }
 }
 
@@ -341,6 +371,7 @@ pub struct SuperMystic {
     f: SpectreLike,
     g: SpectreLike,
     h: MysticLike,
+    pub aabb: Aabb,
 }
 
 impl Geometry for SuperMystic {
@@ -373,17 +404,24 @@ impl Geometry for SuperMystic {
 }
 
 impl SuperMystic {
-    pub fn spectres(&self) -> impl Iterator<Item = &Spectre> {
-        vec![
-            self.a.spectres(),
-            self.b.spectres(),
-            self.c.spectres(),
-            self.d.spectres(),
-            self.f.spectres(),
-            self.g.spectres(),
-            self.h.spectres(),
-        ]
-        .into_iter()
-        .flatten()
+    pub fn has_intersection(&self, aabb: &Aabb) -> bool {
+        !self.aabb.intersection(aabb).is_empty()
+    }
+
+    pub fn spectres_in<'a, 'b: 'a>(&'a self, aabb: &'b Aabb) -> impl Iterator<Item = &'a Spectre> {
+        [&self.a, &self.b, &self.c, &self.d, &self.f, &self.g]
+            .into_iter()
+            .flat_map(|s| {
+                if s.has_intersection(aabb) {
+                    s.spectres_in(aabb)
+                } else {
+                    Box::new(std::iter::empty())
+                }
+            })
+            .chain(if self.h.has_intersection(aabb) {
+                self.h.spectres_in(aabb)
+            } else {
+                Box::new(std::iter::empty())
+            })
     }
 }
