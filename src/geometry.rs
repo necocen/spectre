@@ -8,7 +8,7 @@ pub use aabb::Aabb;
 pub use anchor::Anchor;
 pub use spectre::{Mystic, Spectre};
 pub use spectre_like::{MysticLike, SpectreLike};
-pub use super_spectre::{SuperMystic, SuperSpectre};
+pub use super_spectre::{SuperMystic, SuperSpectre, SpectreContainer};
 
 use crate::utils::{Angle, HexVec};
 

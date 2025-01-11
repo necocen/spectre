@@ -2,6 +2,84 @@ use crate::utils::{Angle, HexVec};
 
 use super::{Aabb, Anchor, Geometry, MysticLike, Spectre, SpectreLike};
 
+pub trait SpectreContainer {
+    fn get_spectre(&self, index: usize) -> Option<&SpectreLike>;
+    fn get_mystic(&self) -> Option<&MysticLike>;
+    fn max_index(&self) -> usize;
+    fn has_intersection(&self, aabb: &Aabb) -> bool;
+    fn level(&self) -> usize;
+}
+
+pub struct SpectreIter<'a> {
+    parents: Vec<(&'a dyn SpectreContainer, usize)>,
+    aabb: Aabb,
+}
+
+impl<'a> Iterator for SpectreIter<'a> {
+    type Item = &'a Spectre;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some((parent, mut index)) = self.parents.pop() {
+            if parent.level() == 1 {
+                // abcdefgを辿る
+                for i in index..parent.max_index() {
+                    if let Some(SpectreLike::Spectre(spectre)) = parent.get_spectre(i) {
+                        if !spectre.has_intersection(&self.aabb) {
+                            continue;
+                        }
+                        self.parents.push((parent, i + 1));
+                        return Some(spectre);
+                    }
+                }
+
+                // hを辿る
+                if let Some(MysticLike::Mystic(mystic)) = parent.get_mystic() {
+                    if mystic.has_intersection(&self.aabb) {
+                        if index == parent.max_index() {
+                            // Mysticのaを判定する
+                            if mystic.a.has_intersection(&self.aabb) {
+                                self.parents.push((parent, index + 1));
+                                return Some(&mystic.a);
+                            }
+                            index += 1;
+                        }
+                        if index > parent.max_index() {
+                            // Mysticのbを判定する
+                            if mystic.b.has_intersection(&self.aabb) {
+                                // 最後なのでparentsに追加しない
+                                return Some(&mystic.b);
+                            }
+                        }
+                    }
+                }
+            } else {
+                // SuperSpectreを辿る
+                for i in index..parent.max_index() {
+                    if let Some(SpectreLike::SuperSpectre(super_spectre)) = parent.get_spectre(i) {
+                        if !super_spectre.has_intersection(&self.aabb) {
+                            continue;
+                        }
+                        self.parents.push((parent, i + 1));
+                        self.parents.push((&**super_spectre, 0));
+                        return self.next();
+                    }
+                }
+                // SuperMysticを辿る
+                if index == parent.max_index() {
+                    if let Some(MysticLike::SuperMystic(super_mystic)) = parent.get_mystic() {
+                        if super_mystic.has_intersection(&self.aabb) {
+                            self.parents.push((parent, parent.max_index() + 1));
+                            self.parents.push((&**super_mystic, 0));
+                            return self.next();
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+}
+
 pub struct SuperSpectre {
     a: Option<SpectreLike>,
     b: Option<SpectreLike>,
@@ -45,16 +123,19 @@ impl Geometry for SuperSpectre {
 }
 
 impl SuperSpectre {
-    const SPECTRE_COUNT: usize = 7;
-    const SPECTRE_REFS: [fn(&SuperSpectre) -> Option<&SpectreLike>; Self::SPECTRE_COUNT] = [
-        |s| s.a.as_ref(),
-        |s| s.b.as_ref(),
-        |s| s.c.as_ref(),
-        |s| s.d.as_ref(),
-        |s| s.e.as_ref(),
-        |s| s.f.as_ref(),
-        |s| s.g.as_ref(),
-    ];
+    pub fn iter(&self, aabb: Aabb) -> SpectreIter<'_> {
+        SpectreIter {
+            parents: vec![(self, 0)],
+            aabb,
+        }
+    }
+
+    pub fn spectres_in<'a>(&'a self, aabb: Aabb) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
+        if !SpectreContainer::has_intersection(self, &aabb) {
+            return Box::new(std::iter::empty());
+        }
+        Box::new(self.iter(aabb))
+    }
 
     #[allow(clippy::too_many_arguments)]
     pub fn new(
@@ -367,39 +448,9 @@ impl SuperSpectre {
             f: self.f,
             g: self.g,
             h: self.h,
+            level: self.level,
             aabb,
         }
-    }
-
-    pub fn has_intersection(&self, aabb: &Aabb) -> bool {
-        !self.aabb.intersection(aabb).is_empty()
-    }
-
-    pub fn spectres_in<'a, 'b: 'a>(&'a self, aabb: &'b Aabb) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
-        // Early return if no intersection with the entire SuperSpectre
-        if !self.has_intersection(aabb) {
-            return Box::new(std::iter::empty());
-        }
-
-        // Pre-allocate Vec with estimated capacity
-        let mut spectres = Vec::with_capacity(Self::SPECTRE_COUNT * 2);
-
-        // Use static array of field accessors
-        for get_spectre in Self::SPECTRE_REFS.iter() {
-            if let Some(s) = get_spectre(self) {
-                if s.has_intersection(aabb) {
-                    spectres.extend(s.spectres_in(aabb));
-                }
-            }
-        }
-
-        if let Some(h) = &self.h {
-            if h.has_intersection(aabb) {
-                spectres.extend(h.spectres_in(aabb));
-            }
-        }
-
-        Box::new(spectres.into_iter())
     }
 }
 
@@ -411,6 +462,7 @@ pub struct SuperMystic {
     f: Option<SpectreLike>,
     g: Option<SpectreLike>,
     h: Option<MysticLike>,
+    level: usize,
     pub aabb: Aabb,
 }
 
@@ -443,45 +495,63 @@ impl Geometry for SuperMystic {
     }
 }
 
-impl SuperMystic {
-    const SPECTRE_COUNT: usize = 6;
-    const SPECTRE_REFS: [fn(&SuperMystic) -> Option<&SpectreLike>; Self::SPECTRE_COUNT] = [
-        |s| s.a.as_ref(),
-        |s| s.b.as_ref(),
-        |s| s.c.as_ref(),
-        |s| s.d.as_ref(),
-        |s| s.f.as_ref(),
-        |s| s.g.as_ref(),
-    ];
+impl SpectreContainer for SuperSpectre {
+    fn get_spectre(&self, index: usize) -> Option<&SpectreLike> {
+        match index {
+            0 => self.a.as_ref(),
+            1 => self.b.as_ref(),
+            2 => self.c.as_ref(),
+            3 => self.d.as_ref(),
+            4 => self.e.as_ref(),
+            5 => self.f.as_ref(),
+            6 => self.g.as_ref(),
+            _ => None,
+        }
+    }
 
-    pub fn has_intersection(&self, aabb: &Aabb) -> bool {
+    fn get_mystic(&self) -> Option<&MysticLike> {
+        self.h.as_ref()
+    }
+
+    fn max_index(&self) -> usize {
+        7
+    }
+
+    fn has_intersection(&self, aabb: &Aabb) -> bool {
         !self.aabb.intersection(aabb).is_empty()
     }
 
-    pub fn spectres_in<'a, 'b: 'a>(&'a self, aabb: &'b Aabb) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
-        // Early return if no intersection with the entire SuperMystic
-        if !self.has_intersection(aabb) {
-            return Box::new(std::iter::empty());
+    fn level(&self) -> usize {
+        self.level
+    }
+}
+
+impl SpectreContainer for SuperMystic {
+    fn get_spectre(&self, index: usize) -> Option<&SpectreLike> {
+        match index {
+            0 => self.a.as_ref(),
+            1 => self.b.as_ref(),
+            2 => self.c.as_ref(),
+            3 => self.d.as_ref(),
+            4 => self.f.as_ref(),
+            5 => self.g.as_ref(),
+            _ => None,
         }
+    }
 
-        // Pre-allocate Vec with estimated capacity
-        let mut spectres = Vec::with_capacity(Self::SPECTRE_COUNT * 2);
+    fn get_mystic(&self) -> Option<&MysticLike> {
+        self.h.as_ref()
+    }
 
-        // Use static array of field accessors
-        for get_spectre in Self::SPECTRE_REFS.iter() {
-            if let Some(s) = get_spectre(self) {
-                if s.has_intersection(aabb) {
-                    spectres.extend(s.spectres_in(aabb));
-                }
-            }
-        }
+    fn max_index(&self) -> usize {
+        6
+    }
 
-        if let Some(h) = &self.h {
-            if h.has_intersection(aabb) {
-                spectres.extend(h.spectres_in(aabb));
-            }
-        }
+    fn has_intersection(&self, aabb: &Aabb) -> bool {
+        !self.aabb.intersection(aabb).is_empty()
+    }
 
-        Box::new(spectres.into_iter())
+    fn level(&self) -> usize {
+        self.level
     }
 }

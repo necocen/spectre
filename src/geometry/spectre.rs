@@ -187,8 +187,8 @@ impl Spectre {
 }
 
 pub struct Mystic {
-    a: Spectre,
-    b: Spectre,
+    pub a: Spectre,
+    pub b: Spectre,
     pub aabb: Aabb,
 }
 
@@ -214,22 +214,5 @@ impl Mystic {
 
     pub fn has_intersection(&self, aabb: &Aabb) -> bool {
         !self.aabb.intersection(aabb).is_empty()
-    }
-
-    pub fn spectres_in<'a, 'b: 'a>(
-        &'a self,
-        aabb: &'b Aabb,
-    ) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
-        if !self.has_intersection(aabb) {
-            return Box::new(std::iter::empty());
-        }
-        let mut spectres = Vec::with_capacity(2);
-        if self.a.has_intersection(aabb) {
-            spectres.push(&self.a);
-        }
-        if self.b.has_intersection(aabb) {
-            spectres.push(&self.b);
-        }
-        Box::new(spectres.into_iter())
     }
 }

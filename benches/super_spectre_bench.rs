@@ -42,13 +42,13 @@ fn bench_spectres_in(c: &mut Criterion) {
         let super_spectre = create_super_spectre(*level);
         let aabbs = create_test_aabbs();
 
-        for (aabb_name, aabb) in aabbs.iter() {
+        for (aabb_name, aabb) in aabbs {
             group.bench_with_input(
                 BenchmarkId::new(format!("level_{}", level), aabb_name),
                 &(level, aabb),
                 |b, (_level, aabb)| {
                     b.iter(|| {
-                        let spectres: Vec<_> = black_box(super_spectre.spectres_in(aabb)).collect();
+                        let spectres: Vec<_> = black_box(super_spectre.spectres_in(*aabb)).collect();
                         black_box(spectres)
                     })
                 },
@@ -71,7 +71,7 @@ fn bench_spectres_in_with_size(c: &mut Criterion) {
         let aabb = Aabb::new(-size, -size, *size, *size);
         group.bench_with_input(BenchmarkId::new("size", size), size, |b, _| {
             b.iter(|| {
-                let spectres: Vec<_> = black_box(super_spectre.spectres_in(&aabb)).collect();
+                let spectres: Vec<_> = black_box(super_spectre.spectres_in(aabb)).collect();
                 black_box(spectres)
             })
         });
@@ -99,7 +99,7 @@ fn bench_spectres_in_position(c: &mut Criterion) {
         let aabb = Aabb::new(x - 100.0, y - 100.0, x + 100.0, y + 100.0);
         group.bench_with_input(BenchmarkId::new("position", name), name, |b, _| {
             b.iter(|| {
-                let spectres: Vec<_> = black_box(super_spectre.spectres_in(&aabb)).collect();
+                let spectres: Vec<_> = black_box(super_spectre.spectres_in(aabb)).collect();
                 black_box(spectres)
             })
         });

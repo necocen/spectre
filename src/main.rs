@@ -141,7 +141,7 @@ fn camera_view_system(
         (entity_query.single().0.len() as f64 * 1.1).ceil() as usize,
     );
     let aabb = Aabb::new(left, top, right, bottom);
-    let spectres = manager.spectres.spectres_in(&aabb).map(to_instance_data);
+    let spectres = manager.spectres.iter(aabb).map(to_instance_data);
     instance_data.extend(spectres);
 
     entity_query.single_mut().0 = instance_data;

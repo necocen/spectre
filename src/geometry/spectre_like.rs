@@ -1,6 +1,6 @@
 use crate::utils::{Angle, HexVec};
 
-use super::{Aabb, Anchor, Geometry, Mystic, Spectre, SuperMystic, SuperSpectre};
+use super::{Aabb, Anchor, Geometry, Mystic, Spectre, SpectreContainer as _, SuperMystic, SuperSpectre};
 
 pub enum SpectreLike {
     Spectre(Spectre),
@@ -64,26 +64,6 @@ impl SpectreLike {
             SpectreLike::SuperSpectre(super_spectre) => super_spectre.has_intersection(aabb),
         }
     }
-
-    pub fn spectres_in<'a, 'b: 'a>(
-        &'a self,
-        aabb: &'b Aabb,
-    ) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
-        if !self.has_intersection(aabb) {
-            return Box::new(std::iter::empty());
-        }
-
-        match self {
-            SpectreLike::Spectre(spectre) => {
-                if spectre.has_intersection(aabb) {
-                    Box::new(std::iter::once(spectre))
-                } else {
-                    Box::new(std::iter::empty())
-                }
-            }
-            SpectreLike::SuperSpectre(super_spectre) => super_spectre.spectres_in(aabb),
-        }
-    }
 }
 
 impl From<Spectre> for SpectreLike {
@@ -138,20 +118,6 @@ impl MysticLike {
         match self {
             MysticLike::Mystic(mystic) => mystic.has_intersection(aabb),
             MysticLike::SuperMystic(super_mystic) => super_mystic.has_intersection(aabb),
-        }
-    }
-
-    pub fn spectres_in<'a, 'b: 'a>(
-        &'a self,
-        aabb: &'b Aabb,
-    ) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
-        if !self.has_intersection(aabb) {
-            return Box::new(std::iter::empty());
-        }
-
-        match self {
-            MysticLike::Mystic(mystic) => mystic.spectres_in(aabb),
-            MysticLike::SuperMystic(super_mystic) => super_mystic.spectres_in(aabb),
         }
     }
 }
