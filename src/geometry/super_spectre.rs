@@ -18,7 +18,7 @@ impl<'a> Iterator for SpectreIter<'a> {
     type Item = &'a Spectre;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some((parent, mut index)) = self.parents.pop() {
+        while let Some((parent, index)) = self.parents.pop() {
             if parent.level() == 1 {
                 // abcdefgを辿る
                 for i in index..parent.max_index() {
@@ -33,21 +33,18 @@ impl<'a> Iterator for SpectreIter<'a> {
 
                 // hを辿る
                 if let Some(MysticLike::Mystic(mystic)) = parent.get_mystic() {
-                    if mystic.has_intersection(&self.aabb) {
-                        if index == parent.max_index() {
+                    if mystic.aabb().has_intersection(&self.aabb) {
+                        if index <= parent.max_index() {
                             // Mysticのaを判定する
                             if mystic.a.aabb().has_intersection(&self.aabb) {
-                                self.parents.push((parent, index + 1));
+                                self.parents.push((parent, parent.max_index() + 1));
                                 return Some(&mystic.a);
                             }
-                            index += 1;
                         }
-                        if index > parent.max_index() {
-                            // Mysticのbを判定する
-                            if mystic.b.aabb().has_intersection(&self.aabb) {
-                                // 最後なのでparentsに追加しない
-                                return Some(&mystic.b);
-                            }
+                        // Mysticのbを判定する
+                        if mystic.b.aabb().has_intersection(&self.aabb) {
+                            // 最後なのでparentsに追加しない
+                            return Some(&mystic.b);
                         }
                     }
                 }
@@ -64,7 +61,7 @@ impl<'a> Iterator for SpectreIter<'a> {
                     }
                 }
                 // SuperMysticを辿る
-                if index == parent.max_index() {
+                if index <= parent.max_index() {
                     if let Some(MysticLike::SuperMystic(super_mystic)) = parent.get_mystic() {
                         if super_mystic.aabb().has_intersection(&self.aabb) {
                             self.parents.push((parent, parent.max_index() + 1));

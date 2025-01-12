@@ -89,7 +89,12 @@ impl Spectre {
         Self::place_points_before(&mut points[..anchor_index], anchor_point, angle);
 
         // アンカーから後方の点を配置
-        Self::place_points_after(&mut points[anchor_index + 1..], anchor_point, angle);
+        Self::place_points_after(
+            &mut points[anchor_index + 1..],
+            anchor_point,
+            anchor_index,
+            angle,
+        );
 
         // Calculate AABB more efficiently using min/max tracking
         let mut min_x = f32::INFINITY;
@@ -115,7 +120,7 @@ impl Spectre {
         }
     }
 
-    /// アンカーより前方の点を配置する（反時計回り）
+    /// アンカーより前方の点を配置する（時計回り）
     fn place_points_before(points: &mut [HexVec], start: HexVec, angle: Angle) {
         let mut p = start;
         for (i, point) in points.iter_mut().enumerate().rev() {
@@ -126,10 +131,10 @@ impl Spectre {
     }
 
     /// アンカーより後方の点を配置する（反時計回り）
-    fn place_points_after(points: &mut [HexVec], start: HexVec, angle: Angle) {
+    fn place_points_after(points: &mut [HexVec], start: HexVec, anchor_index: usize, angle: Angle) {
         let mut p = start;
         for (i, point) in points.iter_mut().enumerate() {
-            let dir = Self::direction_vector(angle, Self::DIRECTIONS[i]);
+            let dir = Self::direction_vector(angle, Self::DIRECTIONS[anchor_index + i]);
             p += dir;
             *point = p;
         }
@@ -184,10 +189,6 @@ impl Spectre {
         let b = Spectre::new_with_anchor_at(a.points(1), 13, a.angle + Angle::new(9));
         Mystic::new(a, b)
     }
-
-    pub fn has_intersection(&self, aabb: &Aabb) -> bool {
-        !self.aabb.intersection(aabb).is_empty()
-    }
 }
 
 pub struct Mystic {
@@ -218,9 +219,5 @@ impl Mystic {
     pub fn new(a: Spectre, b: Spectre) -> Self {
         let aabb = a.aabb.union(&b.aabb);
         Self { a, b, aabb }
-    }
-
-    pub fn has_intersection(&self, aabb: &Aabb) -> bool {
-        !self.aabb.intersection(aabb).is_empty()
     }
 }
