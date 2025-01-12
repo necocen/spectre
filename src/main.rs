@@ -133,14 +133,14 @@ fn camera_view_system(
     let max = (camera_center + Vec2::new(half_width, half_height)) / TILE_SIZE;
     let left = min.x;
     let right = max.x;
-    let top = min.y;
-    let bottom = max.y;
+    let top = max.y;
+    let bottom = min.y;
 
     // ここで計算した可視範囲に合わせてタイルの生成・破棄を行う
     let mut instance_data = Vec::<InstanceData>::with_capacity(
         (entity_query.single().0.len() as f64 * 1.1).ceil() as usize,
     );
-    let aabb = Aabb::new(left, top, right, bottom);
+    let aabb = Aabb::new(left, bottom, right, top);
     let spectres = manager.spectres.iter(aabb).map(to_instance_data);
     instance_data.extend(spectres);
 
