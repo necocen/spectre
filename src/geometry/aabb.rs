@@ -7,7 +7,7 @@ pub struct Aabb {
 }
 
 impl Aabb {
-    pub const NULL : Aabb = Aabb {
+    pub const NULL: Aabb = Aabb {
         min: Vec2::splat(f32::INFINITY),
         max: Vec2::splat(f32::NEG_INFINITY),
     };
@@ -41,6 +41,10 @@ impl Aabb {
         let min = Vec2::new(self.min.x.min(other.min.x), self.min.y.min(other.min.y));
         let max = Vec2::new(self.max.x.max(other.max.x), self.max.y.max(other.max.y));
         Aabb::from_min_max(min, max)
+    }
+
+    pub fn has_intersection(&self, other: &Self) -> bool {
+        !self.intersection(other).is_empty()
     }
 
     pub fn is_empty(&self) -> bool {

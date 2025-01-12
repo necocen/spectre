@@ -1,6 +1,6 @@
 use crate::utils::{Angle, HexVec};
 
-use super::{Aabb, Anchor, Geometry, Mystic, Spectre, SpectreContainer as _, SuperMystic, SuperSpectre};
+use super::{Aabb, Anchor, Geometry, Mystic, Spectre, SuperMystic, SuperSpectre};
 
 pub enum SpectreLike {
     Spectre(Spectre),
@@ -28,6 +28,13 @@ impl Geometry for SpectreLike {
             SpectreLike::SuperSpectre(super_spectre) => super_spectre.rev_edge_direction(anchor),
         }
     }
+
+    fn aabb(&self) -> Aabb {
+        match self {
+            SpectreLike::Spectre(spectre) => spectre.aabb(),
+            SpectreLike::SuperSpectre(super_spectre) => super_spectre.aabb(),
+        }
+    }
 }
 
 impl SpectreLike {
@@ -48,20 +55,6 @@ impl SpectreLike {
             SpectreLike::SuperSpectre(super_spectre) => {
                 MysticLike::SuperMystic(Box::new(super_spectre.into_super_mystic()))
             }
-        }
-    }
-
-    pub fn aabb(&self) -> Aabb {
-        match self {
-            SpectreLike::Spectre(spectre) => spectre.aabb,
-            SpectreLike::SuperSpectre(super_spectre) => super_spectre.aabb,
-        }
-    }
-
-    pub fn has_intersection(&self, aabb: &Aabb) -> bool {
-        match self {
-            SpectreLike::Spectre(spectre) => spectre.has_intersection(aabb),
-            SpectreLike::SuperSpectre(super_spectre) => super_spectre.has_intersection(aabb),
         }
     }
 }
@@ -104,20 +97,11 @@ impl Geometry for MysticLike {
             MysticLike::SuperMystic(super_mystic) => super_mystic.rev_edge_direction(anchor),
         }
     }
-}
 
-impl MysticLike {
-    pub fn aabb(&self) -> Aabb {
+    fn aabb(&self) -> Aabb {
         match self {
-            MysticLike::Mystic(mystic) => mystic.aabb,
-            MysticLike::SuperMystic(super_mystic) => super_mystic.aabb,
-        }
-    }
-
-    pub fn has_intersection(&self, aabb: &Aabb) -> bool {
-        match self {
-            MysticLike::Mystic(mystic) => mystic.has_intersection(aabb),
-            MysticLike::SuperMystic(super_mystic) => super_mystic.has_intersection(aabb),
+            MysticLike::Mystic(mystic) => mystic.aabb(),
+            MysticLike::SuperMystic(super_mystic) => super_mystic.aabb(),
         }
     }
 }

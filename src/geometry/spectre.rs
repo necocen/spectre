@@ -10,7 +10,7 @@ pub struct Spectre {
     /// アンカー1の座標
     pub anchor1: HexVec,
     /// bounding box
-    pub aabb: Aabb,
+    aabb: Aabb,
 }
 
 impl Geometry for Spectre {
@@ -25,6 +25,10 @@ impl Geometry for Spectre {
     fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
         Self::DIRECTIONS[(anchor.index() + Self::VERTEX_COUNT - 1) % Self::VERTEX_COUNT]
             + self.angle
+    }
+
+    fn aabb(&self) -> Aabb {
+        self.aabb
     }
 }
 
@@ -189,7 +193,7 @@ impl Spectre {
 pub struct Mystic {
     pub a: Spectre,
     pub b: Spectre,
-    pub aabb: Aabb,
+    aabb: Aabb,
 }
 
 impl Geometry for Mystic {
@@ -203,6 +207,10 @@ impl Geometry for Mystic {
 
     fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
         self.a.rev_edge_direction(anchor)
+    }
+
+    fn aabb(&self) -> Aabb {
+        self.aabb
     }
 }
 

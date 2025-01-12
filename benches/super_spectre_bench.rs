@@ -11,18 +11,30 @@ fn create_super_spectre(level: usize) -> SuperSpectre {
 fn create_test_aabbs() -> Vec<(String, Aabb)> {
     vec![
         // Small AABB at center
-        ("small_center".to_string(), Aabb::new(-10.0, -10.0, 10.0, 10.0)),
+        (
+            "small_center".to_string(),
+            Aabb::new(-10.0, -10.0, 10.0, 10.0),
+        ),
         // Medium AABB at center
-        ("medium_center".to_string(), Aabb::new(-100.0, -100.0, 100.0, 100.0)),
+        (
+            "medium_center".to_string(),
+            Aabb::new(-100.0, -100.0, 100.0, 100.0),
+        ),
         // Medium AABB at bottom right
-        ("medium_bottom_right".to_string(), Aabb::new(100.0, 100.0, 200.0, 200.0)),
+        (
+            "medium_bottom_right".to_string(),
+            Aabb::new(100.0, 100.0, 200.0, 200.0),
+        ),
         // Large AABB covering most of the space
         (
             "large_covering".to_string(),
             Aabb::new(-1000.0, -1000.0, 1000.0, 1000.0),
         ),
         // AABB outside the SuperSpectre
-        ("outside".to_string(), Aabb::new(-1000.0, -1000.0, -900.0, -900.0)),
+        (
+            "outside".to_string(),
+            Aabb::new(-1000.0, -1000.0, -900.0, -900.0),
+        ),
         // AABB partially intersecting
         (
             "partial_intersect".to_string(),
@@ -48,7 +60,8 @@ fn bench_spectres_in(c: &mut Criterion) {
                 &(level, aabb),
                 |b, (_level, aabb)| {
                     b.iter(|| {
-                        let spectres: Vec<_> = black_box(super_spectre.spectres_in(*aabb)).collect();
+                        let spectres: Vec<_> =
+                            black_box(super_spectre.spectres_in(*aabb)).collect();
                         black_box(spectres)
                     })
                 },
