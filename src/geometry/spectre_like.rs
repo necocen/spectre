@@ -1,10 +1,10 @@
 use crate::utils::{Angle, HexVec};
 
-use super::{Aabb, Anchor, Geometry, Mystic, Spectre, SuperMystic, SuperSpectre};
+use super::{Aabb, Anchor, Geometry, Mystic, Spectre, SpectreIter, SuperMystic, SuperSpectre};
 
 pub enum SpectreLike {
     Spectre(Spectre),
-    SuperSpectre(Box<SuperSpectre>),
+    SuperSpectre(SuperSpectre),
 }
 
 impl Geometry for SpectreLike {
@@ -43,9 +43,9 @@ impl SpectreLike {
             SpectreLike::Spectre(spectre) => {
                 SpectreLike::Spectre(spectre.adjacent_spectre(from_anchor, to_anchor))
             }
-            SpectreLike::SuperSpectre(super_spectre) => SpectreLike::SuperSpectre(Box::new(
+            SpectreLike::SuperSpectre(super_spectre) => SpectreLike::SuperSpectre(
                 super_spectre.adjacent_super_spectre(from_anchor, to_anchor),
-            )),
+            ),
         }
     }
 
@@ -53,8 +53,22 @@ impl SpectreLike {
         match self {
             SpectreLike::Spectre(spectre) => MysticLike::Mystic(spectre.into_mystic()),
             SpectreLike::SuperSpectre(super_spectre) => {
-                MysticLike::SuperMystic(Box::new(super_spectre.into_super_mystic()))
+                MysticLike::SuperMystic(super_spectre.into_super_mystic())
             }
+        }
+    }
+
+    pub fn iter(&self, aabb: Aabb) -> SpectreIter {
+        match self {
+            SpectreLike::Spectre(_) => unimplemented!("SpectreLike::Spectre"),
+            SpectreLike::SuperSpectre(super_spectre) => super_spectre.iter(aabb),
+        }
+    }
+
+    pub fn level(&self) -> usize {
+        match self {
+            SpectreLike::Spectre(_) => 0,
+            SpectreLike::SuperSpectre(super_spectre) => super_spectre.level,
         }
     }
 }
@@ -67,13 +81,13 @@ impl From<Spectre> for SpectreLike {
 
 impl From<SuperSpectre> for SpectreLike {
     fn from(super_spectre: SuperSpectre) -> Self {
-        SpectreLike::SuperSpectre(Box::new(super_spectre))
+        SpectreLike::SuperSpectre(super_spectre)
     }
 }
 
 pub enum MysticLike {
     Mystic(Mystic),
-    SuperMystic(Box<SuperMystic>),
+    SuperMystic(SuperMystic),
 }
 
 impl Geometry for MysticLike {
@@ -114,6 +128,6 @@ impl From<Mystic> for MysticLike {
 
 impl From<SuperMystic> for MysticLike {
     fn from(super_mystic: SuperMystic) -> Self {
-        MysticLike::SuperMystic(Box::new(super_mystic))
+        MysticLike::SuperMystic(super_mystic)
     }
 }

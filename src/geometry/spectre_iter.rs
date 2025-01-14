@@ -54,7 +54,7 @@ impl<'a> Iterator for SpectreIter<'a> {
                             continue;
                         }
                         self.parents.push((parent, i + 1));
-                        self.parents.push((&**super_spectre, 0));
+                        self.parents.push((super_spectre, 0));
                         return self.next();
                     }
                 }
@@ -63,7 +63,7 @@ impl<'a> Iterator for SpectreIter<'a> {
                     if let Some(MysticLike::SuperMystic(super_mystic)) = parent.get_mystic() {
                         if super_mystic.aabb().has_intersection(&self.aabb) {
                             self.parents.push((parent, parent.max_index() + 1));
-                            self.parents.push((&**super_mystic, 0));
+                            self.parents.push((super_mystic, 0));
                             return self.next();
                         }
                     }
