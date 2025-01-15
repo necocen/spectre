@@ -203,111 +203,111 @@ impl SuperSpectre {
             // level is even
             match anchor {
                 Anchor::Anchor1 => {
-                    let g = SuperSpectre::new_with_anchor(
+                    let g = SpectreLike::from(SuperSpectre::new_with_anchor(
                         level - 1,
                         anchor_point,
                         Anchor::Anchor3,
                         angle,
-                    );
-                    let f = g.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let e = f.adjacent_super_spectre(Anchor::Anchor2, Anchor::Anchor4);
-                    let d = e.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let c = d.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let b = c.adjacent_super_spectre(Anchor::Anchor2, Anchor::Anchor4);
-                    let a = b.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
+                    ));
+                    let f = g.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let e = f.adjacent_spectre_like(Anchor::Anchor2, Anchor::Anchor4);
+                    let d = e.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let c = d.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let b = c.adjacent_spectre_like(Anchor::Anchor2, Anchor::Anchor4);
+                    let a = b.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
                     let h = a
-                        .adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor1)
-                        .into_super_mystic();
+                        .adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor1)
+                        .into_mystic_like();
                     Self::new(
-                        Some(Box::new(a.into())),
-                        Some(Box::new(b.into())),
-                        Some(Box::new(c.into())),
-                        Some(Box::new(d.into())),
-                        Some(Box::new(e.into())),
-                        Some(Box::new(f.into())),
-                        Some(Box::new(g.into())),
-                        Some(Box::new(h.into())),
+                        Some(Box::new(a)),
+                        Some(Box::new(b)),
+                        Some(Box::new(c)),
+                        Some(Box::new(d)),
+                        Some(Box::new(e)),
+                        Some(Box::new(f)),
+                        Some(Box::new(g)),
+                        Some(Box::new(h)),
                         level,
                     )
                 }
                 Anchor::Anchor2 => {
-                    let d = SuperSpectre::new_with_anchor(
+                    let d = SpectreLike::from(SuperSpectre::new_with_anchor(
                         level - 1,
                         anchor_point,
                         Anchor::Anchor2,
                         angle,
-                    );
-                    let c = d.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let b = c.adjacent_super_spectre(Anchor::Anchor2, Anchor::Anchor4);
-                    let a = b.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let h = a.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor1);
-                    let g = h.adjacent_super_spectre(Anchor::Anchor4, Anchor::Anchor4);
-                    let f = g.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let e = f.adjacent_super_spectre(Anchor::Anchor2, Anchor::Anchor4);
-                    let h = h.into_super_mystic();
+                    ));
+                    let c = d.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let b = c.adjacent_spectre_like(Anchor::Anchor2, Anchor::Anchor4);
+                    let a = b.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let h = a.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor1);
+                    let g = h.adjacent_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
+                    let f = g.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let e = f.adjacent_spectre_like(Anchor::Anchor2, Anchor::Anchor4);
+                    let h = h.into_mystic_like();
                     Self::new(
-                        Some(Box::new(a.into())),
-                        Some(Box::new(b.into())),
-                        Some(Box::new(c.into())),
-                        Some(Box::new(d.into())),
-                        Some(Box::new(e.into())),
-                        Some(Box::new(f.into())),
-                        Some(Box::new(g.into())),
-                        Some(Box::new(h.into())),
+                        Some(Box::new(a)),
+                        Some(Box::new(b)),
+                        Some(Box::new(c)),
+                        Some(Box::new(d)),
+                        Some(Box::new(e)),
+                        Some(Box::new(f)),
+                        Some(Box::new(g)),
+                        Some(Box::new(h)),
                         level,
                     )
                 }
                 Anchor::Anchor3 => {
-                    let b = SuperSpectre::new_with_anchor(
+                    let b = SpectreLike::from(SuperSpectre::new_with_anchor(
                         level - 1,
                         anchor_point,
                         Anchor::Anchor3,
                         angle,
-                    );
-                    let a = b.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let h = a.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor1);
-                    let g = h.adjacent_super_spectre(Anchor::Anchor4, Anchor::Anchor4);
-                    let f = g.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let e = f.adjacent_super_spectre(Anchor::Anchor2, Anchor::Anchor4);
-                    let d = e.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let c = d.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let h = h.into_super_mystic();
+                    ));
+                    let a = b.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let h = a.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor1);
+                    let g = h.adjacent_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
+                    let f = g.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let e = f.adjacent_spectre_like(Anchor::Anchor2, Anchor::Anchor4);
+                    let d = e.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let c = d.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let h = h.into_mystic_like();
                     Self::new(
-                        Some(Box::new(a.into())),
-                        Some(Box::new(b.into())),
-                        Some(Box::new(c.into())),
-                        Some(Box::new(d.into())),
-                        Some(Box::new(e.into())),
-                        Some(Box::new(f.into())),
-                        Some(Box::new(g.into())),
-                        Some(Box::new(h.into())),
+                        Some(Box::new(a)),
+                        Some(Box::new(b)),
+                        Some(Box::new(c)),
+                        Some(Box::new(d)),
+                        Some(Box::new(e)),
+                        Some(Box::new(f)),
+                        Some(Box::new(g)),
+                        Some(Box::new(h)),
                         level,
                     )
                 }
                 Anchor::Anchor4 => {
-                    let a = SuperSpectre::new_with_anchor(
+                    let a = SpectreLike::from(SuperSpectre::new_with_anchor(
                         level - 1,
                         anchor_point,
                         Anchor::Anchor2,
                         angle,
-                    );
-                    let h = a.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor1);
-                    let g = h.adjacent_super_spectre(Anchor::Anchor4, Anchor::Anchor4);
-                    let f = g.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let e = f.adjacent_super_spectre(Anchor::Anchor2, Anchor::Anchor4);
-                    let d = e.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let c = d.adjacent_super_spectre(Anchor::Anchor1, Anchor::Anchor3);
-                    let b = c.adjacent_super_spectre(Anchor::Anchor2, Anchor::Anchor4);
-                    let h = h.into_super_mystic();
+                    ));
+                    let h = a.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor1);
+                    let g = h.adjacent_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
+                    let f = g.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let e = f.adjacent_spectre_like(Anchor::Anchor2, Anchor::Anchor4);
+                    let d = e.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let c = d.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor3);
+                    let b = c.adjacent_spectre_like(Anchor::Anchor2, Anchor::Anchor4);
+                    let h = h.into_mystic_like();
                     Self::new(
-                        Some(Box::new(a.into())),
-                        Some(Box::new(b.into())),
-                        Some(Box::new(c.into())),
-                        Some(Box::new(d.into())),
-                        Some(Box::new(e.into())),
-                        Some(Box::new(f.into())),
-                        Some(Box::new(g.into())),
-                        Some(Box::new(h.into())),
+                        Some(Box::new(a)),
+                        Some(Box::new(b)),
+                        Some(Box::new(c)),
+                        Some(Box::new(d)),
+                        Some(Box::new(e)),
+                        Some(Box::new(f)),
+                        Some(Box::new(g)),
+                        Some(Box::new(h)),
                         level,
                     )
                 }
