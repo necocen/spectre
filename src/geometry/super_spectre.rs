@@ -1,7 +1,7 @@
 use crate::utils::{Angle, HexVec};
 
 use super::{
-    Aabb, Anchor, Geometry, MysticLike, Spectre, SpectreContainer, SpectreIter, SpectreLike,
+    Aabb, Anchor, Geometry, MysticLike, Spectre, SpectreContainer, SpectreIter, SpectreLike, MIN_PARTIAL_SUPER_SPECTRE_LEVEL,
 };
 
 pub struct SuperSpectre {
@@ -77,7 +77,6 @@ impl SuperSpectre {
         h: Box<MysticLike>,
         level: usize,
     ) -> Self {
-        // Assertions only if both parts exist
         assert!(h.point(Anchor::Anchor1) == a.point(Anchor::Anchor1));
         assert!(a.point(Anchor::Anchor3) == b.point(Anchor::Anchor1));
         assert!(b.point(Anchor::Anchor4) == c.point(Anchor::Anchor2));
@@ -304,6 +303,7 @@ impl SuperSpectre {
     }
 
     pub fn update_children(&mut self, aabb: &Aabb) {
+        if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL { return; }
         self.a.update(aabb);
         self.b.update(aabb);
         self.c.update(aabb);
@@ -312,6 +312,16 @@ impl SuperSpectre {
         self.f.update(aabb);
         self.g.update(aabb);
         self.h.update(aabb);
+        let mut aabb = Aabb::NULL;
+        aabb = aabb.union(&self.a.aabb());
+        aabb = aabb.union(&self.b.aabb());
+        aabb = aabb.union(&self.c.aabb());
+        aabb = aabb.union(&self.d.aabb());
+        aabb = aabb.union(&self.e.aabb());
+        aabb = aabb.union(&self.f.aabb());
+        aabb = aabb.union(&self.g.aabb());
+        aabb = aabb.union(&self.h.aabb());
+        self.aabb = aabb;
     }
 }
 
@@ -329,6 +339,7 @@ pub struct SuperMystic {
 
 impl SuperMystic {
     pub fn update_children(&mut self, aabb: &Aabb) {
+        if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL { return; }
         self.a.update(aabb);
         self.b.update(aabb);
         self.c.update(aabb);
@@ -336,6 +347,15 @@ impl SuperMystic {
         self.f.update(aabb);
         self.g.update(aabb);
         self.h.update(aabb);
+        let mut aabb = Aabb::NULL;
+        aabb = aabb.union(&self.a.aabb());
+        aabb = aabb.union(&self.b.aabb());
+        aabb = aabb.union(&self.c.aabb());
+        aabb = aabb.union(&self.d.aabb());
+        aabb = aabb.union(&self.f.aabb());
+        aabb = aabb.union(&self.g.aabb());
+        aabb = aabb.union(&self.h.aabb());
+        self.aabb = aabb;
     }
 }
 

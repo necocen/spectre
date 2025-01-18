@@ -3,7 +3,7 @@ use crate::{
     utils::{Angle, HexVec},
 };
 
-use super::{Aabb, Anchor, Geometry, SuperSpectre};
+use super::{Aabb, Anchor, Geometry, SuperSpectre, MIN_PARTIAL_SUPER_SPECTRE_LEVEL};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Skeleton {
@@ -256,7 +256,7 @@ impl Skeleton {
     }
 
     pub fn to_super_spectre(&self, aabb: &Aabb) -> SuperSpectre {
-        if self.level <= 5 {
+        if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL {
             // 小さいlevelのSkeletonはそのままSuperSpectreに変換
             return SuperSpectre::new_with_anchor(
                 self.level,

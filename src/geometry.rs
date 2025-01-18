@@ -22,3 +22,6 @@ pub trait Geometry {
     fn rev_edge_direction(&self, anchor: Anchor) -> Angle;
     fn aabb(&self) -> Aabb;
 }
+
+/// これより細かいSuperSpectreは必ずまとめてロードする
+const MIN_PARTIAL_SUPER_SPECTRE_LEVEL: usize = 4;
