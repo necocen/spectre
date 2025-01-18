@@ -1,5 +1,6 @@
 mod aabb;
 mod anchor;
+mod skeleton;
 mod spectre;
 mod spectre_iter;
 mod spectre_like;
@@ -7,6 +8,7 @@ mod super_spectre;
 
 pub use aabb::Aabb;
 pub use anchor::Anchor;
+pub use skeleton::Skeleton;
 pub use spectre::{Mystic, Spectre};
 pub use spectre_iter::{SpectreContainer, SpectreIter};
 pub use spectre_like::{MysticLike, SpectreLike};

@@ -7,6 +7,7 @@ pub trait SpectreContainer {
     fn level(&self) -> usize;
 }
 
+#[derive(Clone)]
 pub struct SpectreIter<'a> {
     pub parents: Vec<(&'a dyn SpectreContainer, usize)>,
     pub aabb: Aabb,

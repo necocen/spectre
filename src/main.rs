@@ -10,7 +10,7 @@ use lyon_tessellation::{
 };
 use spectre::{
     camera::CameraPlugin,
-    geometry::{Aabb, Anchor, Geometry as _, Spectre, SuperSpectre},
+    geometry::{Aabb, Anchor, Geometry as _, Skeleton, Spectre, SuperSpectre},
     instancing::{CustomMaterialPlugin, InstanceData, InstanceMaterialData},
     utils::{Angle, HexVec},
 };
@@ -113,7 +113,7 @@ fn setup_mesh(meshes: &mut ResMut<Assets<Mesh>>) -> Handle<Mesh> {
 pub struct SpectreTag;
 
 fn camera_view_system(
-    manager: Res<SpectresManager>,
+    mut manager: ResMut<SpectresManager>,
     windows: Query<&Window, With<PrimaryWindow>>,
     ortho_q: Query<(&OrthographicProjection, &GlobalTransform), With<Camera2d>>,
     mut entity_query: Query<&mut InstanceMaterialData, With<SpectreTag>>,
@@ -141,20 +141,22 @@ fn camera_view_system(
         (entity_query.single().0.len() as f64 * 1.1).ceil() as usize,
     );
     let aabb = Aabb::new(left, bottom, right, top);
-    let spectres = manager.spectres.iter(aabb).map(to_instance_data);
-    instance_data.extend(spectres);
-
+    manager.spectres.update_children(&aabb);
+    let spectres = manager.spectres.iter(aabb);
+    instance_data.extend(spectres.map(to_instance_data));
     entity_query.single_mut().0 = instance_data;
 }
 
 #[derive(Resource)]
 struct SpectresManager {
-    spectres: SuperSpectre,
+    spectres: Box<SuperSpectre>,
 }
 
 impl SpectresManager {
     pub fn new() -> Self {
-        let spectres = SuperSpectre::new_with_anchor(8, HexVec::ZERO, Anchor::Anchor1, Angle::ZERO);
+        let skeleton = Skeleton::new_with_anchor(10, HexVec::ZERO, Anchor::Anchor1, Angle::ZERO)
+            .to_super_spectre(&Aabb::NULL);
+        let spectres = Box::new(skeleton);
         Self { spectres }
     }
 }

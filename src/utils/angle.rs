@@ -4,7 +4,7 @@ use std::f32::consts::PI;
 ///
 /// # Details
 /// 12方向の角度を表現し、加減算は自動的にmod 12で正規化されます。
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Angle(u8);
 
 impl Angle {

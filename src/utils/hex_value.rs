@@ -5,11 +5,12 @@ use super::Angle;
 /// 正六角形のタイリングに適した実数値を表現する型
 /// i/2 + j*√3/2 の形で値を保持する
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct HexValue {
     /// 有理数部分の分子（分母は2で固定）
-    rational: i32,
+    pub rational: i32,
     /// √3の係数の分子（分母は2で固定）
-    irrational: i32,
+    pub irrational: i32,
 }
 
 impl std::fmt::Display for HexValue {
@@ -205,7 +206,7 @@ mod tests {
         // 否定
         assert_eq!(-a, HexValue::new(-1, -2));
 
-        // 乗算
+        // 乗算（スカラー）
         assert_eq!(a * 3, HexValue::new(3, 6));
     }
 

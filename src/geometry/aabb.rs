@@ -50,6 +50,13 @@ impl Aabb {
     pub fn is_empty(&self) -> bool {
         self.min.x >= self.max.x || self.min.y >= self.max.y
     }
+
+    pub fn contains(&self, point: Vec2) -> bool {
+        self.min.x <= point.x
+            && point.x <= self.max.x
+            && self.min.y <= point.y
+            && point.y <= self.max.y
+    }
 }
 
 #[cfg(test)]

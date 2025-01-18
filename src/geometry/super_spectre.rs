@@ -5,14 +5,14 @@ use super::{
 };
 
 pub struct SuperSpectre {
-    a: Option<Box<SpectreLike>>,
-    b: Option<Box<SpectreLike>>,
-    c: Option<Box<SpectreLike>>,
-    d: Option<Box<SpectreLike>>,
-    e: Option<Box<SpectreLike>>,
-    f: Option<Box<SpectreLike>>,
-    g: Option<Box<SpectreLike>>,
-    h: Option<Box<MysticLike>>,
+    a: Box<SpectreLike>,
+    b: Box<SpectreLike>,
+    c: Box<SpectreLike>,
+    d: Box<SpectreLike>,
+    e: Box<SpectreLike>,
+    f: Box<SpectreLike>,
+    g: Box<SpectreLike>,
+    h: Box<MysticLike>,
     pub level: usize,
     aabb: Aabb,
 }
@@ -20,76 +20,28 @@ pub struct SuperSpectre {
 impl Geometry for SuperSpectre {
     fn point(&self, anchor: Anchor) -> HexVec {
         match anchor {
-            Anchor::Anchor1 => self
-                .g
-                .as_ref()
-                .expect("g must exist")
-                .point(Anchor::Anchor3),
-            Anchor::Anchor2 => self
-                .d
-                .as_ref()
-                .expect("d must exist")
-                .point(Anchor::Anchor2),
-            Anchor::Anchor3 => self
-                .b
-                .as_ref()
-                .expect("b must exist")
-                .point(Anchor::Anchor3),
-            Anchor::Anchor4 => self
-                .a
-                .as_ref()
-                .expect("a must exist")
-                .point(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.point(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.point(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.point(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.point(Anchor::Anchor2),
         }
     }
 
     fn edge_direction(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self
-                .g
-                .as_ref()
-                .expect("g must exist")
-                .edge_direction(Anchor::Anchor3),
-            Anchor::Anchor2 => self
-                .d
-                .as_ref()
-                .expect("d must exist")
-                .edge_direction(Anchor::Anchor2),
-            Anchor::Anchor3 => self
-                .b
-                .as_ref()
-                .expect("b must exist")
-                .edge_direction(Anchor::Anchor3),
-            Anchor::Anchor4 => self
-                .a
-                .as_ref()
-                .expect("a must exist")
-                .edge_direction(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.edge_direction(Anchor::Anchor2),
         }
     }
 
     fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self
-                .g
-                .as_ref()
-                .expect("g must exist")
-                .rev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor2 => self
-                .d
-                .as_ref()
-                .expect("d must exist")
-                .rev_edge_direction(Anchor::Anchor2),
-            Anchor::Anchor3 => self
-                .b
-                .as_ref()
-                .expect("b must exist")
-                .rev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor4 => self
-                .a
-                .as_ref()
-                .expect("a must exist")
-                .rev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.rev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.rev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.rev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.rev_edge_direction(Anchor::Anchor2),
         }
     }
 
@@ -115,68 +67,36 @@ impl SuperSpectre {
 
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        a: Option<Box<SpectreLike>>,
-        b: Option<Box<SpectreLike>>,
-        c: Option<Box<SpectreLike>>,
-        d: Option<Box<SpectreLike>>,
-        e: Option<Box<SpectreLike>>,
-        f: Option<Box<SpectreLike>>,
-        g: Option<Box<SpectreLike>>,
-        h: Option<Box<MysticLike>>,
+        a: Box<SpectreLike>,
+        b: Box<SpectreLike>,
+        c: Box<SpectreLike>,
+        d: Box<SpectreLike>,
+        e: Box<SpectreLike>,
+        f: Box<SpectreLike>,
+        g: Box<SpectreLike>,
+        h: Box<MysticLike>,
         level: usize,
     ) -> Self {
         // Assertions only if both parts exist
-        if let (Some(h), Some(a)) = (&h, &a) {
-            assert!(h.point(Anchor::Anchor1) == a.point(Anchor::Anchor1));
-        }
-        if let (Some(a), Some(b)) = (&a, &b) {
-            assert!(a.point(Anchor::Anchor3) == b.point(Anchor::Anchor1));
-        }
-        if let (Some(b), Some(c)) = (&b, &c) {
-            assert!(b.point(Anchor::Anchor4) == c.point(Anchor::Anchor2));
-        }
-        if let (Some(c), Some(d)) = (&c, &d) {
-            assert!(c.point(Anchor::Anchor3) == d.point(Anchor::Anchor1));
-        }
-        if let (Some(d), Some(e)) = (&d, &e) {
-            assert!(d.point(Anchor::Anchor3) == e.point(Anchor::Anchor1));
-        }
-        if let (Some(e), Some(f)) = (&e, &f) {
-            assert!(e.point(Anchor::Anchor4) == f.point(Anchor::Anchor2));
-        }
-        if let (Some(f), Some(g)) = (&f, &g) {
-            assert!(f.point(Anchor::Anchor3) == g.point(Anchor::Anchor1));
-        }
-        if let (Some(g), Some(h)) = (&g, &h) {
-            assert!(g.point(Anchor::Anchor4) == h.point(Anchor::Anchor4));
-        }
+        assert!(h.point(Anchor::Anchor1) == a.point(Anchor::Anchor1));
+        assert!(a.point(Anchor::Anchor3) == b.point(Anchor::Anchor1));
+        assert!(b.point(Anchor::Anchor4) == c.point(Anchor::Anchor2));
+        assert!(c.point(Anchor::Anchor3) == d.point(Anchor::Anchor1));
+        assert!(d.point(Anchor::Anchor3) == e.point(Anchor::Anchor1));
+        assert!(e.point(Anchor::Anchor4) == f.point(Anchor::Anchor2));
+        assert!(f.point(Anchor::Anchor3) == g.point(Anchor::Anchor1));
+        assert!(g.point(Anchor::Anchor4) == h.point(Anchor::Anchor4));
 
         // Calculate AABB only for existing parts
         let mut aabb = Aabb::NULL;
-        if let Some(a) = &a {
-            aabb = aabb.union(&a.aabb());
-        }
-        if let Some(b) = &b {
-            aabb = aabb.union(&b.aabb());
-        }
-        if let Some(c) = &c {
-            aabb = aabb.union(&c.aabb());
-        }
-        if let Some(d) = &d {
-            aabb = aabb.union(&d.aabb());
-        }
-        if let Some(e) = &e {
-            aabb = aabb.union(&e.aabb());
-        }
-        if let Some(f) = &f {
-            aabb = aabb.union(&f.aabb());
-        }
-        if let Some(g) = &g {
-            aabb = aabb.union(&g.aabb());
-        }
-        if let Some(h) = &h {
-            aabb = aabb.union(&h.aabb());
-        }
+        aabb = aabb.union(&a.aabb());
+        aabb = aabb.union(&b.aabb());
+        aabb = aabb.union(&c.aabb());
+        aabb = aabb.union(&d.aabb());
+        aabb = aabb.union(&e.aabb());
+        aabb = aabb.union(&f.aabb());
+        aabb = aabb.union(&g.aabb());
+        aabb = aabb.union(&h.aabb());
 
         Self {
             a,
@@ -224,14 +144,14 @@ impl SuperSpectre {
                 let f = e.adjacent_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
                 let h = h.into_mystic_like();
                 Self::new(
-                    Some(Box::new(a)),
-                    Some(Box::new(b)),
-                    Some(Box::new(c)),
-                    Some(Box::new(d)),
-                    Some(Box::new(e)),
-                    Some(Box::new(f)),
-                    Some(Box::new(g)),
-                    Some(Box::new(h)),
+                    Box::new(a),
+                    Box::new(b),
+                    Box::new(c),
+                    Box::new(d),
+                    Box::new(e),
+                    Box::new(f),
+                    Box::new(g),
+                    Box::new(h),
                     level,
                 )
             }
@@ -259,14 +179,14 @@ impl SuperSpectre {
                 let c = b.adjacent_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
                 let h = h.into_mystic_like();
                 Self::new(
-                    Some(Box::new(a)),
-                    Some(Box::new(b)),
-                    Some(Box::new(c)),
-                    Some(Box::new(d)),
-                    Some(Box::new(e)),
-                    Some(Box::new(f)),
-                    Some(Box::new(g)),
-                    Some(Box::new(h)),
+                    Box::new(a),
+                    Box::new(b),
+                    Box::new(c),
+                    Box::new(d),
+                    Box::new(e),
+                    Box::new(f),
+                    Box::new(g),
+                    Box::new(h),
                     level,
                 )
             }
@@ -294,14 +214,14 @@ impl SuperSpectre {
                 let a = h.adjacent_spectre_like(Anchor::Anchor1, Anchor::Anchor1);
                 let h = h.into_mystic_like();
                 Self::new(
-                    Some(Box::new(a)),
-                    Some(Box::new(b)),
-                    Some(Box::new(c)),
-                    Some(Box::new(d)),
-                    Some(Box::new(e)),
-                    Some(Box::new(f)),
-                    Some(Box::new(g)),
-                    Some(Box::new(h)),
+                    Box::new(a),
+                    Box::new(b),
+                    Box::new(c),
+                    Box::new(d),
+                    Box::new(e),
+                    Box::new(f),
+                    Box::new(g),
+                    Box::new(h),
                     level,
                 )
             }
@@ -329,14 +249,14 @@ impl SuperSpectre {
                 let h = g.adjacent_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
                 let h = h.into_mystic_like();
                 Self::new(
-                    Some(Box::new(a)),
-                    Some(Box::new(b)),
-                    Some(Box::new(c)),
-                    Some(Box::new(d)),
-                    Some(Box::new(e)),
-                    Some(Box::new(f)),
-                    Some(Box::new(g)),
-                    Some(Box::new(h)),
+                    Box::new(a),
+                    Box::new(b),
+                    Box::new(c),
+                    Box::new(d),
+                    Box::new(e),
+                    Box::new(f),
+                    Box::new(g),
+                    Box::new(h),
                     level,
                 )
             }
@@ -362,27 +282,13 @@ impl SuperSpectre {
     pub fn into_super_mystic(self) -> SuperMystic {
         // Calculate AABB only for existing parts
         let mut aabb = Aabb::NULL;
-        if let Some(a) = &self.a {
-            aabb = aabb.union(&a.aabb());
-        }
-        if let Some(b) = &self.b {
-            aabb = aabb.union(&b.aabb());
-        }
-        if let Some(c) = &self.c {
-            aabb = aabb.union(&c.aabb());
-        }
-        if let Some(d) = &self.d {
-            aabb = aabb.union(&d.aabb());
-        }
-        if let Some(f) = &self.f {
-            aabb = aabb.union(&f.aabb());
-        }
-        if let Some(g) = &self.g {
-            aabb = aabb.union(&g.aabb());
-        }
-        if let Some(h) = &self.h {
-            aabb = aabb.union(&h.aabb());
-        }
+        aabb = aabb.union(&self.a.aabb());
+        aabb = aabb.union(&self.b.aabb());
+        aabb = aabb.union(&self.c.aabb());
+        aabb = aabb.union(&self.d.aabb());
+        aabb = aabb.union(&self.f.aabb());
+        aabb = aabb.union(&self.g.aabb());
+        aabb = aabb.union(&self.h.aabb());
 
         SuperMystic {
             a: self.a,
@@ -396,93 +302,68 @@ impl SuperSpectre {
             aabb,
         }
     }
+
+    pub fn update_children(&mut self, aabb: &Aabb) {
+        self.a.update(aabb);
+        self.b.update(aabb);
+        self.c.update(aabb);
+        self.d.update(aabb);
+        self.e.update(aabb);
+        self.f.update(aabb);
+        self.g.update(aabb);
+        self.h.update(aabb);
+    }
 }
 
 pub struct SuperMystic {
-    a: Option<Box<SpectreLike>>,
-    b: Option<Box<SpectreLike>>,
-    c: Option<Box<SpectreLike>>,
-    d: Option<Box<SpectreLike>>,
-    f: Option<Box<SpectreLike>>,
-    g: Option<Box<SpectreLike>>,
-    h: Option<Box<MysticLike>>,
-    level: usize,
+    a: Box<SpectreLike>,
+    b: Box<SpectreLike>,
+    c: Box<SpectreLike>,
+    d: Box<SpectreLike>,
+    f: Box<SpectreLike>,
+    g: Box<SpectreLike>,
+    h: Box<MysticLike>,
+    pub level: usize,
     aabb: Aabb,
+}
+
+impl SuperMystic {
+    pub fn update_children(&mut self, aabb: &Aabb) {
+        self.a.update(aabb);
+        self.b.update(aabb);
+        self.c.update(aabb);
+        self.d.update(aabb);
+        self.f.update(aabb);
+        self.g.update(aabb);
+        self.h.update(aabb);
+    }
 }
 
 impl Geometry for SuperMystic {
     fn point(&self, anchor: Anchor) -> HexVec {
         match anchor {
-            Anchor::Anchor1 => self
-                .g
-                .as_ref()
-                .expect("g must exist")
-                .point(Anchor::Anchor3),
-            Anchor::Anchor2 => self
-                .d
-                .as_ref()
-                .expect("d must exist")
-                .point(Anchor::Anchor2),
-            Anchor::Anchor3 => self
-                .b
-                .as_ref()
-                .expect("b must exist")
-                .point(Anchor::Anchor3),
-            Anchor::Anchor4 => self
-                .a
-                .as_ref()
-                .expect("a must exist")
-                .point(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.point(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.point(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.point(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.point(Anchor::Anchor2),
         }
     }
 
     fn edge_direction(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self
-                .g
-                .as_ref()
-                .expect("g must exist")
-                .edge_direction(Anchor::Anchor3),
-            Anchor::Anchor2 => self
-                .d
-                .as_ref()
-                .expect("d must exist")
-                .edge_direction(Anchor::Anchor2),
-            Anchor::Anchor3 => self
-                .b
-                .as_ref()
-                .expect("b must exist")
-                .edge_direction(Anchor::Anchor3),
-            Anchor::Anchor4 => self
-                .a
-                .as_ref()
-                .expect("a must exist")
-                .edge_direction(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.edge_direction(Anchor::Anchor2),
         }
     }
 
     fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self
-                .g
-                .as_ref()
-                .expect("g must exist")
-                .rev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor2 => self
-                .d
-                .as_ref()
-                .expect("d must exist")
-                .rev_edge_direction(Anchor::Anchor2),
-            Anchor::Anchor3 => self
-                .b
-                .as_ref()
-                .expect("b must exist")
-                .rev_edge_direction(Anchor::Anchor3),
-            Anchor::Anchor4 => self
-                .a
-                .as_ref()
-                .expect("a must exist")
-                .rev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor1 => self.g.rev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.rev_edge_direction(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.rev_edge_direction(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.rev_edge_direction(Anchor::Anchor2),
         }
     }
 
@@ -494,19 +375,19 @@ impl Geometry for SuperMystic {
 impl SpectreContainer for SuperSpectre {
     fn get_spectre(&self, index: usize) -> Option<&SpectreLike> {
         match index {
-            0 => self.a.as_deref(),
-            1 => self.b.as_deref(),
-            2 => self.c.as_deref(),
-            3 => self.d.as_deref(),
-            4 => self.e.as_deref(),
-            5 => self.f.as_deref(),
-            6 => self.g.as_deref(),
+            0 => Some(&self.a),
+            1 => Some(&self.b),
+            2 => Some(&self.c),
+            3 => Some(&self.d),
+            4 => Some(&self.e),
+            5 => Some(&self.f),
+            6 => Some(&self.g),
             _ => None,
         }
     }
 
     fn get_mystic(&self) -> Option<&MysticLike> {
-        self.h.as_deref()
+        Some(&self.h)
     }
 
     fn max_index(&self) -> usize {
@@ -521,18 +402,18 @@ impl SpectreContainer for SuperSpectre {
 impl SpectreContainer for SuperMystic {
     fn get_spectre(&self, index: usize) -> Option<&SpectreLike> {
         match index {
-            0 => self.a.as_deref(),
-            1 => self.b.as_deref(),
-            2 => self.c.as_deref(),
-            3 => self.d.as_deref(),
-            4 => self.f.as_deref(),
-            5 => self.g.as_deref(),
+            0 => Some(&self.a),
+            1 => Some(&self.b),
+            2 => Some(&self.c),
+            3 => Some(&self.d),
+            4 => Some(&self.f),
+            5 => Some(&self.g),
             _ => None,
         }
     }
 
     fn get_mystic(&self) -> Option<&MysticLike> {
-        self.h.as_deref()
+        Some(&self.h)
     }
 
     fn max_index(&self) -> usize {
