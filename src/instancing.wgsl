@@ -43,9 +43,9 @@ fn vertex(vertex: Vertex) -> VertexOutput {
     );
 
     // 5) 色の適用
-    let hue = angle;
-    let saturation = sin(1.166 * vertex.i_pos_angle.x) * 0.333 + 0.666;
-    let value = 0.7 + saturation * 0.3;
+    let hue = 3.84 + sin(angle) * 0.333; // 青を中心に色相を変化
+    let saturation = sin(1.666 * vertex.i_pos_angle.x) * 0.166 + 0.666;
+    let value = sin(vertex.i_pos_angle.y) * 0.166 + 0.833;
     out.color = vec4<f32>(hsv_to_rgb(vec3<f32>(hue, saturation, value)), 1.0);
 
     return out;
