@@ -134,6 +134,12 @@ impl From<bevy::math::Vec2> for HexVec {
     }
 }
 
+impl std::fmt::Display for HexVec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

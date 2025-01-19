@@ -4,7 +4,7 @@ use super::Angle;
 
 /// 正六角形のタイリングに適した実数値を表現する型
 /// i/2 + j*√3/2 の形で値を保持する
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct HexValue {
     /// 有理数部分の分子（分母は2で固定）
@@ -13,9 +13,37 @@ pub struct HexValue {
     pub irrational: i32,
 }
 
+impl std::fmt::Debug for HexValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.rational != 0 {
+            if self.rational % 2 == 0 {
+                write!(f, "{}", self.rational / 2)?;
+            } else {
+                write!(f, "{}/2", self.rational)?;
+            }
+        }
+        if self.irrational != 0 {
+            if self.rational != 0 {
+                if self.irrational > 0 {
+                    write!(f, " + ")?;
+                } else {
+                    write!(f, " - ")?;
+                }
+            }
+            if self.irrational % 2 == 0 {
+                write!(f, "{}", i32::abs(self.irrational / 2))?;
+            } else {
+                write!(f, "{}/2", i32::abs(self.irrational))?;
+            }
+            write!(f, " * √3")?;
+        }
+        Ok(())
+    }
+}
+
 impl std::fmt::Display for HexValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}/2 + 2 * {}/√3", self.rational, self.irrational)
+        std::fmt::Debug::fmt(self, f)
     }
 }
 
