@@ -46,12 +46,9 @@ fn setup_tiles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     commands.insert_resource(spectres_manager);
 }
 
-// タイルのサイズを設定
-const TILE_SIZE: f32 = 10.0;
-
 #[inline]
 fn to_instance_data(spectre: &Spectre) -> InstanceData {
-    let anchor_pos = spectre.point(Anchor::Anchor1).to_vec2() * TILE_SIZE;
+    let anchor_pos = spectre.point(Anchor::Anchor1).to_vec2();
     InstanceData {
         position: anchor_pos.extend(0.0),
         angle: spectre.angle.to_radians(),
@@ -61,7 +58,7 @@ fn to_instance_data(spectre: &Spectre) -> InstanceData {
 fn setup_mesh(meshes: &mut ResMut<Assets<Mesh>>) -> Handle<Mesh> {
     let mut path_builder = Path::builder();
     let points = Spectre::new_with_anchor(HexVec::ZERO, Anchor::Anchor1, Angle::ZERO).all_points();
-    let points_vec2: Vec<Vec2> = points.iter().map(|p| p.to_vec2() * TILE_SIZE).collect();
+    let points_vec2: Vec<Vec2> = points.iter().map(|p| p.to_vec2()).collect();
     path_builder.begin(Point::new(points_vec2[0].x, points_vec2[0].y));
     for point in points_vec2.iter().skip(1) {
         path_builder.line_to(Point::new(point.x, point.y));
@@ -129,8 +126,8 @@ fn camera_view_system(
     let half_width = window.width() * 0.5 * transform.scale().x * ortho.scale * 1.5;
     let half_height = window.height() * 0.5 * transform.scale().y * ortho.scale * 1.5;
 
-    let min = (camera_center - Vec2::new(half_width, half_height)) / TILE_SIZE;
-    let max = (camera_center + Vec2::new(half_width, half_height)) / TILE_SIZE;
+    let min = camera_center - Vec2::new(half_width, half_height);
+    let max = camera_center + Vec2::new(half_width, half_height);
     let left = min.x;
     let right = max.x;
     let top = max.y;

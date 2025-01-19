@@ -10,9 +10,14 @@ impl Plugin for CameraPlugin {
 }
 
 fn setup_camera(mut commands: Commands) {
+    let controller = CameraController::default();
     commands
-        .spawn((Camera2d, Msaa::Sample4))
-        .insert(CameraController::default());
+        .spawn((
+            Camera2d,
+            Msaa::Sample4,
+            Transform::from_scale(Vec3::splat(1.0 / controller.zoom)),
+        ))
+        .insert(controller);
 }
 
 /// タッチ操作の状態を表す列挙型
@@ -79,10 +84,10 @@ impl Default for CameraController {
             velocity: Vec2::ZERO,
             damping: 0.95,
             drag_velocity: Vec2::ZERO,
-            zoom: 1.0,
-            target_zoom: 1.0,
-            min_zoom: 0.25,
-            max_zoom: 4.0,
+            zoom: 10.0,
+            target_zoom: 10.0,
+            min_zoom: 2.5,
+            max_zoom: 40.0,
             zoom_speed: 0.2,
             zoom_smoothing: 0.3,
             touch_state: TouchState::None,
