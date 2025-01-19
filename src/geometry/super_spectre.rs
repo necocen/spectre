@@ -81,14 +81,14 @@ impl SuperSpectre {
         h: Box<MysticLike>,
         level: usize,
     ) -> Self {
-        assert!(h.point(Anchor::Anchor1) == a.point(Anchor::Anchor1));
-        assert!(a.point(Anchor::Anchor3) == b.point(Anchor::Anchor1));
-        assert!(b.point(Anchor::Anchor4) == c.point(Anchor::Anchor2));
-        assert!(c.point(Anchor::Anchor3) == d.point(Anchor::Anchor1));
-        assert!(d.point(Anchor::Anchor3) == e.point(Anchor::Anchor1));
-        assert!(e.point(Anchor::Anchor4) == f.point(Anchor::Anchor2));
-        assert!(f.point(Anchor::Anchor3) == g.point(Anchor::Anchor1));
-        assert!(g.point(Anchor::Anchor4) == h.point(Anchor::Anchor4));
+        assert_eq!(h.point(Anchor::Anchor1), a.point(Anchor::Anchor1));
+        assert_eq!(a.point(Anchor::Anchor3), b.point(Anchor::Anchor1));
+        assert_eq!(b.point(Anchor::Anchor4), c.point(Anchor::Anchor2));
+        assert_eq!(c.point(Anchor::Anchor3), d.point(Anchor::Anchor1));
+        assert_eq!(d.point(Anchor::Anchor3), e.point(Anchor::Anchor1));
+        assert_eq!(e.point(Anchor::Anchor4), f.point(Anchor::Anchor2));
+        assert_eq!(f.point(Anchor::Anchor3), g.point(Anchor::Anchor1));
+        assert_eq!(g.point(Anchor::Anchor4), h.point(Anchor::Anchor4));
 
         // Calculate AABB only for existing parts
         let mut aabb = Aabb::NULL;
@@ -113,6 +113,60 @@ impl SuperSpectre {
             level,
             aabb,
         }
+    }
+
+    pub fn from_child_a(a: SuperSpectre) -> Self {
+        let a_skeleton = Skeleton::new_with_anchor(
+            a.level,
+            a.point(Anchor::Anchor1),
+            Anchor::Anchor1,
+            a.edge_direction(Anchor::Anchor1),
+        );
+        let b = a_skeleton.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+        let c = b.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+        let d = c.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+        let e = d.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+        let f = e.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+        let g = f.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+        let h = g.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor4);
+        Self::new(
+            Box::new(a.into()),
+            Box::new(b.into()),
+            Box::new(c.into()),
+            Box::new(d.into()),
+            Box::new(e.into()),
+            Box::new(f.into()),
+            Box::new(g.into()),
+            Box::new(h.into()),
+            a_skeleton.level + 1,
+        )
+    }
+
+    pub fn from_child_f(f: SuperSpectre) -> Self {
+        let f_skeleton = Skeleton::new_with_anchor(
+            f.level,
+            f.point(Anchor::Anchor1),
+            Anchor::Anchor1,
+            f.edge_direction(Anchor::Anchor1),
+        );
+        let g = f_skeleton.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+        let h = g.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor4);
+        let a = h.adjacent_skeleton(Anchor::Anchor1, Anchor::Anchor1);
+        let b = a.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+        let c = b.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+        let d = c.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+        let e = d.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+        Self::new(
+            Box::new(a.into()),
+            Box::new(b.into()),
+            Box::new(c.into()),
+            Box::new(d.into()),
+            Box::new(e.into()),
+            Box::new(f.into()),
+            Box::new(g.into()),
+            Box::new(h.into()),
+            f_skeleton.level + 1,
+        )
     }
 
     pub fn new_with_anchor(

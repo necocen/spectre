@@ -209,3 +209,9 @@ impl From<SuperMystic> for MysticLike {
         MysticLike::SuperMystic(super_mystic)
     }
 }
+
+impl From<Skeleton> for MysticLike {
+    fn from(skeleton: Skeleton) -> Self {
+        MysticLike::Skeleton(skeleton)
+    }
+}
