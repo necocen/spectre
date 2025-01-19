@@ -42,7 +42,6 @@ fn setup_tiles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
         SpectreTag,
         NoFrustumCulling,
     ));
-    // commands.spawn((Mesh2d(mesh), InstanceMaterialData(spectres), SpectreTag, NoFrustumCulling));
     commands.insert_resource(spectres_manager);
 }
 
