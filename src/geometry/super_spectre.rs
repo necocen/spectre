@@ -1,7 +1,11 @@
-use crate::utils::{Angle, HexVec};
+use crate::{
+    geometry::Skeleton,
+    utils::{Angle, HexVec},
+};
 
 use super::{
-    Aabb, Anchor, Geometry, MysticLike, Spectre, SpectreContainer, SpectreIter, SpectreLike, MIN_PARTIAL_SUPER_SPECTRE_LEVEL,
+    Aabb, Anchor, Geometry, MysticLike, Spectre, SpectreContainer, SpectreIter, SpectreLike,
+    MIN_PARTIAL_SUPER_SPECTRE_LEVEL,
 };
 
 pub struct SuperSpectre {
@@ -303,7 +307,9 @@ impl SuperSpectre {
     }
 
     pub fn update_children(&mut self, aabb: &Aabb) {
-        if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL { return; }
+        if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL {
+            return;
+        }
         self.a.update(aabb);
         self.b.update(aabb);
         self.c.update(aabb);
@@ -339,7 +345,9 @@ pub struct SuperMystic {
 
 impl SuperMystic {
     pub fn update_children(&mut self, aabb: &Aabb) {
-        if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL { return; }
+        if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL {
+            return;
+        }
         self.a.update(aabb);
         self.b.update(aabb);
         self.c.update(aabb);

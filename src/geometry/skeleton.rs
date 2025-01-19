@@ -71,7 +71,12 @@ impl Geometry for Skeleton {
         let expanded_max_x = max_x + (max_x - min_x) * 0.5;
         let expanded_max_y = max_y + (max_y - min_y) * 0.5;
 
-        Aabb::new(expanded_min_x, expanded_min_y, expanded_max_x, expanded_max_y)
+        Aabb::new(
+            expanded_min_x,
+            expanded_min_y,
+            expanded_max_x,
+            expanded_max_y,
+        )
     }
 }
 
