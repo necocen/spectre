@@ -33,10 +33,16 @@ pub fn run() {
             ..default()
         }))
         .add_plugins((camera::CameraPlugin, instancing::CustomMaterialPlugin))
-        .add_systems(Startup, setup_tiles)
+        .add_systems(Startup, (setup_tiles, set_window_title))
         .init_resource::<LastViewState>()
         .add_systems(Update, camera_view_system)
         .run();
+}
+
+fn set_window_title(mut window_query: Query<&mut Window, With<PrimaryWindow>>) {
+    if let Ok(mut window) = window_query.get_single_mut() {
+        window.title = "Infinite Spectres".to_string();
+    }
 }
 
 /// タイルを配置するシステム
