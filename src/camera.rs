@@ -246,6 +246,8 @@ fn camera_movement_system(
         // タッチ入力の処理
         let mut active_touches: Vec<_> = touch_evr.read().collect();
         active_touches.sort_by_key(|touch| touch.id);
+        // 稀に（WASMでTLS接続環境？）同一フレーム内に同じタッチIDのイベントが複数回発生することがあるので、重複を除去
+        active_touches.dedup_by_key(|touch| touch.id);
 
         if active_touches.is_empty() {
             match controller.touch_state {
