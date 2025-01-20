@@ -1,5 +1,7 @@
 # Infinite Spectres
 
+![Demo](./img/demo.gif "An animation demonstrating scrolling and zooming over a plane tiled with the Spectre monotile.")
+
 This is a program that infinitely tiles using the Spectre (more precisely, Tile-(1,1)). It is written in Rust with Bevy and also runs in a web browser.
 Spectre is an aperiodic monotile discovered in Reference [1]. For more details, please refer to the paper or the authors' website ( https://cs.uwaterloo.ca/~csk/spectre/ ).
 
