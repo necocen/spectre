@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-bevy = "0.15.0"
+bevy = "0.15.1"
 bytemuck = { version = "1.21.0", features = ["derive"] }
 lyon_tessellation = "1.0.15"
 tracing = "0.1.41"
