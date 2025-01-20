@@ -34,6 +34,7 @@ pub fn run() {
         }))
         .add_plugins((camera::CameraPlugin, instancing::CustomMaterialPlugin))
         .add_systems(Startup, setup_tiles)
+        .init_resource::<LastViewState>()
         .add_systems(Update, camera_view_system)
         .run();
 }
@@ -107,11 +108,20 @@ fn setup_mesh(meshes: &mut ResMut<Assets<Mesh>>) -> Handle<Mesh> {
     meshes.add(mesh)
 }
 
+#[derive(Resource, Default)]
+struct LastViewState {
+    /// カメラの表示範囲
+    aabb: Option<Aabb>,
+    /// 前のフレームでタイルを拡大したかどうか
+    expanded: bool,
+}
+
 fn camera_view_system(
     mut manager: ResMut<SpectresManager>,
     windows: Query<&Window, With<PrimaryWindow>>,
     ortho_q: Query<(&OrthographicProjection, &GlobalTransform), With<Camera2d>>,
     mut entity_query: Query<&mut InstanceMaterialData>,
+    mut last_view: ResMut<LastViewState>,
 ) {
     let window = windows.single();
 
@@ -133,25 +143,38 @@ fn camera_view_system(
     let min = camera_center - Vec2::new(half_width, half_height);
     let max = camera_center + Vec2::new(half_width, half_height);
 
-    // ここで計算した可視範囲に合わせてタイルの生成・破棄を行う
+    let aabb = Aabb::from_min_max(min, max);
+
+    // 前フレームと同じaabbの場合は早期リターン
+    if let Some(last_aabb) = last_view.aabb {
+        if last_aabb == aabb && !last_view.expanded {
+            return;
+        }
+    }
+    last_view.aabb = Some(aabb);
+
+    // aabbに含まれるタイルを取得してバッファを更新
     let mut instance_data = Vec::<InstanceData>::with_capacity(
         (entity_query.single().0.len() as f64 * 1.1).ceil() as usize,
     );
-    let aabb = Aabb::from_min_max(min, max);
-
     manager.update(&aabb);
     let spectres = manager.spectres_in(&aabb);
     instance_data.extend(spectres.map(to_instance_data));
+    entity_query.single_mut().0 = instance_data;
 
     // 描画対象タイルの重心の偏りによってタイル生成の要否を判定する
     // （欠けがある場合はその分だけ重心が偏るという考えかた）
     // FIXME: update_childrenの精度が高くないので、本当はタイルが存在するのに生成してしまうパターンがある
-    let center = (aabb.min + aabb.max) * 0.5;
-    let barycenter = instance_data.iter().fold(Vec2::ZERO, |acc, data| {
-        acc + (data.position.truncate() - center)
-    }) / instance_data.len() as f32;
-    if barycenter.length() > 5.0 {
-        manager.expand();
+    let instance_data = &entity_query.single().0;
+    last_view.expanded = false;
+    if !instance_data.is_empty() {
+        let center = (aabb.min + aabb.max) * 0.5;
+        let barycenter = instance_data.iter().fold(Vec2::ZERO, |acc, data| {
+            acc + (data.position.truncate() - center)
+        }) / instance_data.len() as f32;
+        if barycenter.length() > 5.0 {
+            manager.expand();
+            last_view.expanded = true;
+        }
     }
-    entity_query.single_mut().0 = instance_data;
 }
