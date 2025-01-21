@@ -4,14 +4,14 @@ use bevy::{
     render::{mesh::PrimitiveTopology, view::NoFrustumCulling},
     window::PrimaryWindow,
 };
-use geometry::{Aabb, Anchor, Geometry as _, Spectre};
+use geometry::{Anchor, Geometry as _, Spectre};
 use instancing::{InstanceData, InstanceMaterialData};
 use lyon_tessellation::{
     geom::Point, geometry_builder::simple_builder, path::Path, FillOptions, FillTessellator,
     VertexBuffers,
 };
 use spectres_manager::SpectresManager;
-use utils::{Angle, HexVec};
+use utils::{Aabb, Angle, HexVec};
 #[cfg(target_family = "wasm")]
 use wasm_bindgen::prelude::*;
 
@@ -117,7 +117,7 @@ fn setup_mesh(meshes: &mut ResMut<Assets<Mesh>>) -> Handle<Mesh> {
 #[derive(Resource, Default)]
 struct LastViewState {
     /// カメラの表示範囲
-    aabb: Option<Aabb>,
+    bbox: Option<Aabb>,
     /// 前のフレームでタイルを拡大したかどうか
     expanded: bool,
 }
@@ -149,22 +149,22 @@ fn camera_view_system(
     let min = camera_center - Vec2::new(half_width, half_height);
     let max = camera_center + Vec2::new(half_width, half_height);
 
-    let aabb = Aabb::from_min_max(min, max);
+    let bbox = Aabb::from_min_max(min, max);
 
-    // 前フレームと同じaabbの場合は早期リターン
-    if let Some(last_aabb) = last_view.aabb {
-        if last_aabb == aabb && !last_view.expanded {
+    // 前フレームと同じbboxの場合は早期リターン
+    if let Some(last_bbox) = last_view.bbox {
+        if last_bbox == bbox && !last_view.expanded {
             return;
         }
     }
-    last_view.aabb = Some(aabb);
+    last_view.bbox = Some(bbox);
 
-    // aabbに含まれるタイルを取得してバッファを更新
+    // bboxに含まれるタイルを取得してバッファを更新
     let mut instance_data = Vec::<InstanceData>::with_capacity(
         (entity_query.single().0.len() as f64 * 1.1).ceil() as usize,
     );
-    manager.update(&aabb);
-    let spectres = manager.spectres_in(&aabb);
+    manager.update(&bbox);
+    let spectres = manager.spectres_in(&bbox);
     instance_data.extend(spectres.map(to_instance_data));
     entity_query.single_mut().0 = instance_data;
 
@@ -174,7 +174,7 @@ fn camera_view_system(
     let instance_data = &entity_query.single().0;
     last_view.expanded = false;
     if !instance_data.is_empty() {
-        let center = (aabb.min + aabb.max) * 0.5;
+        let center = (bbox.min + bbox.max) * 0.5;
         let barycenter = instance_data.iter().fold(Vec2::ZERO, |acc, data| {
             acc + (data.position.truncate() - center)
         }) / instance_data.len() as f32;

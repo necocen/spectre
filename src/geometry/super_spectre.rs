@@ -1,10 +1,10 @@
 use crate::{
     geometry::Skeleton,
-    utils::{Angle, HexVec},
+    utils::{Aabb, Angle, HexVec},
 };
 
 use super::{
-    Aabb, Anchor, Geometry, MysticLike, Spectre, SpectreContainer, SpectreIter, SpectreLike,
+    Anchor, Geometry, MysticLike, Spectre, SpectreContainer, SpectreIter, SpectreLike,
     MIN_PARTIAL_SUPER_SPECTRE_LEVEL,
 };
 
@@ -18,7 +18,7 @@ pub struct SuperSpectre {
     g: Box<SpectreLike>,
     h: Box<MysticLike>,
     pub level: usize,
-    aabb: Aabb,
+    bbox: Aabb,
 }
 
 impl Geometry for SuperSpectre {
@@ -49,24 +49,24 @@ impl Geometry for SuperSpectre {
         }
     }
 
-    fn aabb(&self) -> Aabb {
-        self.aabb
+    fn bbox(&self) -> Aabb {
+        self.bbox
     }
 }
 
 impl SuperSpectre {
-    pub fn iter(&self, aabb: Aabb) -> SpectreIter<'_> {
+    pub fn iter(&self, bbox: Aabb) -> SpectreIter<'_> {
         SpectreIter {
             parents: vec![(self, 0)],
-            aabb,
+            bbox,
         }
     }
 
-    pub fn spectres_in<'a>(&'a self, aabb: Aabb) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
-        if !self.aabb().has_intersection(&aabb) {
+    pub fn spectres_in<'a>(&'a self, bbox: Aabb) -> Box<dyn Iterator<Item = &'a Spectre> + 'a> {
+        if !self.bbox().has_intersection(&bbox) {
             return Box::new(std::iter::empty());
         }
-        Box::new(self.iter(aabb))
+        Box::new(self.iter(bbox))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -91,15 +91,15 @@ impl SuperSpectre {
         assert_eq!(g.point(Anchor::Anchor4), h.point(Anchor::Anchor4));
 
         // Calculate AABB only for existing parts
-        let mut aabb = Aabb::NULL;
-        aabb = aabb.union(&a.aabb());
-        aabb = aabb.union(&b.aabb());
-        aabb = aabb.union(&c.aabb());
-        aabb = aabb.union(&d.aabb());
-        aabb = aabb.union(&e.aabb());
-        aabb = aabb.union(&f.aabb());
-        aabb = aabb.union(&g.aabb());
-        aabb = aabb.union(&h.aabb());
+        let mut bbox = Aabb::NULL;
+        bbox = bbox.union(&a.bbox());
+        bbox = bbox.union(&b.bbox());
+        bbox = bbox.union(&c.bbox());
+        bbox = bbox.union(&d.bbox());
+        bbox = bbox.union(&e.bbox());
+        bbox = bbox.union(&f.bbox());
+        bbox = bbox.union(&g.bbox());
+        bbox = bbox.union(&h.bbox());
 
         Self {
             a,
@@ -111,7 +111,7 @@ impl SuperSpectre {
             g,
             h,
             level,
-            aabb,
+            bbox,
         }
     }
 
@@ -338,14 +338,14 @@ impl SuperSpectre {
 
     pub fn into_super_mystic(self) -> SuperMystic {
         // Calculate AABB only for existing parts
-        let mut aabb = Aabb::NULL;
-        aabb = aabb.union(&self.a.aabb());
-        aabb = aabb.union(&self.b.aabb());
-        aabb = aabb.union(&self.c.aabb());
-        aabb = aabb.union(&self.d.aabb());
-        aabb = aabb.union(&self.f.aabb());
-        aabb = aabb.union(&self.g.aabb());
-        aabb = aabb.union(&self.h.aabb());
+        let mut bbox = Aabb::NULL;
+        bbox = bbox.union(&self.a.bbox());
+        bbox = bbox.union(&self.b.bbox());
+        bbox = bbox.union(&self.c.bbox());
+        bbox = bbox.union(&self.d.bbox());
+        bbox = bbox.union(&self.f.bbox());
+        bbox = bbox.union(&self.g.bbox());
+        bbox = bbox.union(&self.h.bbox());
 
         SuperMystic {
             a: self.a,
@@ -356,32 +356,32 @@ impl SuperSpectre {
             g: self.g,
             h: self.h,
             level: self.level,
-            aabb,
+            bbox,
         }
     }
 
-    pub fn update_children(&mut self, aabb: &Aabb) {
+    pub fn update_children(&mut self, bbox: &Aabb) {
         if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL {
             return;
         }
-        self.a.update(aabb);
-        self.b.update(aabb);
-        self.c.update(aabb);
-        self.d.update(aabb);
-        self.e.update(aabb);
-        self.f.update(aabb);
-        self.g.update(aabb);
-        self.h.update(aabb);
-        let mut aabb = Aabb::NULL;
-        aabb = aabb.union(&self.a.aabb());
-        aabb = aabb.union(&self.b.aabb());
-        aabb = aabb.union(&self.c.aabb());
-        aabb = aabb.union(&self.d.aabb());
-        aabb = aabb.union(&self.e.aabb());
-        aabb = aabb.union(&self.f.aabb());
-        aabb = aabb.union(&self.g.aabb());
-        aabb = aabb.union(&self.h.aabb());
-        self.aabb = aabb;
+        self.a.update(bbox);
+        self.b.update(bbox);
+        self.c.update(bbox);
+        self.d.update(bbox);
+        self.e.update(bbox);
+        self.f.update(bbox);
+        self.g.update(bbox);
+        self.h.update(bbox);
+        let mut bbox = Aabb::NULL;
+        bbox = bbox.union(&self.a.bbox());
+        bbox = bbox.union(&self.b.bbox());
+        bbox = bbox.union(&self.c.bbox());
+        bbox = bbox.union(&self.d.bbox());
+        bbox = bbox.union(&self.e.bbox());
+        bbox = bbox.union(&self.f.bbox());
+        bbox = bbox.union(&self.g.bbox());
+        bbox = bbox.union(&self.h.bbox());
+        self.bbox = bbox;
     }
 }
 
@@ -394,30 +394,30 @@ pub struct SuperMystic {
     g: Box<SpectreLike>,
     h: Box<MysticLike>,
     pub level: usize,
-    aabb: Aabb,
+    bbox: Aabb,
 }
 
 impl SuperMystic {
-    pub fn update_children(&mut self, aabb: &Aabb) {
+    pub fn update_children(&mut self, bbox: &Aabb) {
         if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL {
             return;
         }
-        self.a.update(aabb);
-        self.b.update(aabb);
-        self.c.update(aabb);
-        self.d.update(aabb);
-        self.f.update(aabb);
-        self.g.update(aabb);
-        self.h.update(aabb);
-        let mut aabb = Aabb::NULL;
-        aabb = aabb.union(&self.a.aabb());
-        aabb = aabb.union(&self.b.aabb());
-        aabb = aabb.union(&self.c.aabb());
-        aabb = aabb.union(&self.d.aabb());
-        aabb = aabb.union(&self.f.aabb());
-        aabb = aabb.union(&self.g.aabb());
-        aabb = aabb.union(&self.h.aabb());
-        self.aabb = aabb;
+        self.a.update(bbox);
+        self.b.update(bbox);
+        self.c.update(bbox);
+        self.d.update(bbox);
+        self.f.update(bbox);
+        self.g.update(bbox);
+        self.h.update(bbox);
+        let mut bbox = Aabb::NULL;
+        bbox = bbox.union(&self.a.bbox());
+        bbox = bbox.union(&self.b.bbox());
+        bbox = bbox.union(&self.c.bbox());
+        bbox = bbox.union(&self.d.bbox());
+        bbox = bbox.union(&self.f.bbox());
+        bbox = bbox.union(&self.g.bbox());
+        bbox = bbox.union(&self.h.bbox());
+        self.bbox = bbox;
     }
 }
 
@@ -449,8 +449,8 @@ impl Geometry for SuperMystic {
         }
     }
 
-    fn aabb(&self) -> Aabb {
-        self.aabb
+    fn bbox(&self) -> Aabb {
+        self.bbox
     }
 }
 

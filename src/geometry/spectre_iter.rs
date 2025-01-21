@@ -1,4 +1,6 @@
-use super::{Aabb, Geometry as _, MysticLike, Spectre, SpectreLike};
+use crate::utils::Aabb;
+
+use super::{Geometry as _, MysticLike, Spectre, SpectreLike};
 
 pub trait SpectreContainer {
     fn get_spectre(&self, index: usize) -> Option<&SpectreLike>;
@@ -10,7 +12,7 @@ pub trait SpectreContainer {
 #[derive(Clone)]
 pub struct SpectreIter<'a> {
     pub parents: Vec<(&'a dyn SpectreContainer, usize)>,
-    pub aabb: Aabb,
+    pub bbox: Aabb,
 }
 
 impl<'a> Iterator for SpectreIter<'a> {
@@ -22,7 +24,7 @@ impl<'a> Iterator for SpectreIter<'a> {
                 // abcdefgを辿る
                 for i in index..parent.max_index() {
                     if let Some(SpectreLike::Spectre(spectre)) = parent.get_spectre(i) {
-                        if !spectre.aabb().has_intersection(&self.aabb) {
+                        if !spectre.bbox().has_intersection(&self.bbox) {
                             continue;
                         }
                         self.parents.push((parent, i + 1));
@@ -32,16 +34,16 @@ impl<'a> Iterator for SpectreIter<'a> {
 
                 // hを辿る
                 if let Some(MysticLike::Mystic(mystic)) = parent.get_mystic() {
-                    if mystic.aabb().has_intersection(&self.aabb) {
+                    if mystic.bbox().has_intersection(&self.bbox) {
                         if index <= parent.max_index() {
                             // Mysticのaを判定する
-                            if mystic.a.aabb().has_intersection(&self.aabb) {
+                            if mystic.a.bbox().has_intersection(&self.bbox) {
                                 self.parents.push((parent, parent.max_index() + 1));
                                 return Some(&mystic.a);
                             }
                         }
                         // Mysticのbを判定する
-                        if mystic.b.aabb().has_intersection(&self.aabb) {
+                        if mystic.b.bbox().has_intersection(&self.bbox) {
                             // 最後なのでparentsに追加しない
                             return Some(&mystic.b);
                         }
@@ -51,7 +53,7 @@ impl<'a> Iterator for SpectreIter<'a> {
                 // SuperSpectreを辿る
                 for i in index..parent.max_index() {
                     if let Some(SpectreLike::SuperSpectre(super_spectre)) = parent.get_spectre(i) {
-                        if !super_spectre.aabb().has_intersection(&self.aabb) {
+                        if !super_spectre.bbox().has_intersection(&self.bbox) {
                             continue;
                         }
                         self.parents.push((parent, i + 1));
@@ -62,7 +64,7 @@ impl<'a> Iterator for SpectreIter<'a> {
                 // SuperMysticを辿る
                 if index <= parent.max_index() {
                     if let Some(MysticLike::SuperMystic(super_mystic)) = parent.get_mystic() {
-                        if super_mystic.aabb().has_intersection(&self.aabb) {
+                        if super_mystic.bbox().has_intersection(&self.bbox) {
                             self.parents.push((parent, parent.max_index() + 1));
                             self.parents.push((super_mystic, 0));
                             return self.next();

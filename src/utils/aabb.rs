@@ -65,34 +65,34 @@ mod tests {
 
     #[test]
     fn test_constructors() {
-        let aabb1 = Aabb::from_min_max(Vec2::new(1.0, 2.0), Vec2::new(3.0, 4.0));
-        assert_eq!(aabb1.min, Vec2::new(1.0, 2.0));
-        assert_eq!(aabb1.max, Vec2::new(3.0, 4.0));
+        let bbox1 = Aabb::from_min_max(Vec2::new(1.0, 2.0), Vec2::new(3.0, 4.0));
+        assert_eq!(bbox1.min, Vec2::new(1.0, 2.0));
+        assert_eq!(bbox1.max, Vec2::new(3.0, 4.0));
 
-        let aabb2 = Aabb::new(1.0, 2.0, 3.0, 4.0);
-        assert_eq!(aabb2.min, Vec2::new(1.0, 2.0));
-        assert_eq!(aabb2.max, Vec2::new(3.0, 4.0));
+        let bbox2 = Aabb::new(1.0, 2.0, 3.0, 4.0);
+        assert_eq!(bbox2.min, Vec2::new(1.0, 2.0));
+        assert_eq!(bbox2.max, Vec2::new(3.0, 4.0));
     }
 
     #[test]
     fn test_intersection() {
-        let aabb1 = Aabb::new(0.0, 0.0, 2.0, 2.0);
-        let aabb2 = Aabb::new(1.0, 1.0, 3.0, 3.0);
-        let intersection = aabb1.intersection(&aabb2);
+        let bbox1 = Aabb::new(0.0, 0.0, 2.0, 2.0);
+        let bbox2 = Aabb::new(1.0, 1.0, 3.0, 3.0);
+        let intersection = bbox1.intersection(&bbox2);
         assert_eq!(intersection.min, Vec2::new(1.0, 1.0));
         assert_eq!(intersection.max, Vec2::new(2.0, 2.0));
 
         // 交差しない場合
-        let aabb3 = Aabb::new(3.0, 3.0, 4.0, 4.0);
-        let no_intersection = aabb1.intersection(&aabb3);
+        let bbox3 = Aabb::new(3.0, 3.0, 4.0, 4.0);
+        let no_intersection = bbox1.intersection(&bbox3);
         assert!(no_intersection.is_empty());
     }
 
     #[test]
     fn test_union() {
-        let aabb1 = Aabb::new(0.0, 0.0, 2.0, 2.0);
-        let aabb2 = Aabb::new(1.0, 1.0, 3.0, 3.0);
-        let union = aabb1.union(&aabb2);
+        let bbox1 = Aabb::new(0.0, 0.0, 2.0, 2.0);
+        let bbox2 = Aabb::new(1.0, 1.0, 3.0, 3.0);
+        let union = bbox1.union(&bbox2);
         assert_eq!(union.min, Vec2::new(0.0, 0.0));
         assert_eq!(union.max, Vec2::new(3.0, 3.0));
     }
@@ -100,20 +100,20 @@ mod tests {
     #[test]
     fn test_is_empty() {
         // 正常なAABB
-        let aabb1 = Aabb::new(0.0, 0.0, 2.0, 2.0);
-        assert!(!aabb1.is_empty());
+        let bbox1 = Aabb::new(0.0, 0.0, 2.0, 2.0);
+        assert!(!bbox1.is_empty());
 
         // 空のAABB（x方向）
-        let aabb2 = Aabb::new(2.0, 0.0, 1.0, 2.0);
-        assert!(aabb2.is_empty());
+        let bbox2 = Aabb::new(2.0, 0.0, 1.0, 2.0);
+        assert!(bbox2.is_empty());
 
         // 空のAABB（y方向）
-        let aabb3 = Aabb::new(0.0, 2.0, 2.0, 1.0);
-        assert!(aabb3.is_empty());
+        let bbox3 = Aabb::new(0.0, 2.0, 2.0, 1.0);
+        assert!(bbox3.is_empty());
 
         // 点
-        let aabb4 = Aabb::new(1.0, 1.0, 1.0, 1.0);
-        assert!(aabb4.is_empty());
+        let bbox4 = Aabb::new(1.0, 1.0, 1.0, 1.0);
+        assert!(bbox4.is_empty());
     }
 
     #[test]
@@ -124,14 +124,14 @@ mod tests {
         assert!(Aabb::NULL.is_empty());
 
         // NULLとの交差演算
-        let aabb = Aabb::new(0.0, 0.0, 2.0, 2.0);
-        assert_eq!(aabb.intersection(&Aabb::NULL), Aabb::NULL);
-        assert_eq!(Aabb::NULL.intersection(&aabb), Aabb::NULL);
+        let bbox = Aabb::new(0.0, 0.0, 2.0, 2.0);
+        assert_eq!(bbox.intersection(&Aabb::NULL), Aabb::NULL);
+        assert_eq!(Aabb::NULL.intersection(&bbox), Aabb::NULL);
         assert_eq!(Aabb::NULL.intersection(&Aabb::NULL), Aabb::NULL);
 
         // NULLとの合併演算
-        assert_eq!(aabb.union(&Aabb::NULL), aabb);
-        assert_eq!(Aabb::NULL.union(&aabb), aabb);
+        assert_eq!(bbox.union(&Aabb::NULL), bbox);
+        assert_eq!(Aabb::NULL.union(&bbox), bbox);
         assert_eq!(Aabb::NULL.union(&Aabb::NULL), Aabb::NULL);
     }
 }

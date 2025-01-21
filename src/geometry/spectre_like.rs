@@ -1,8 +1,6 @@
-use crate::utils::{Angle, HexVec};
+use crate::utils::{Aabb, Angle, HexVec};
 
-use super::{
-    Aabb, Anchor, Geometry, Mystic, Skeleton, Spectre, SpectreIter, SuperMystic, SuperSpectre,
-};
+use super::{Anchor, Geometry, Mystic, Skeleton, Spectre, SpectreIter, SuperMystic, SuperSpectre};
 
 pub enum SpectreLike {
     Spectre(Spectre),
@@ -35,11 +33,11 @@ impl Geometry for SpectreLike {
         }
     }
 
-    fn aabb(&self) -> Aabb {
+    fn bbox(&self) -> Aabb {
         match self {
-            SpectreLike::Spectre(spectre) => spectre.aabb(),
-            SpectreLike::SuperSpectre(super_spectre) => super_spectre.aabb(),
-            SpectreLike::Skeleton(skeleton) => skeleton.aabb(),
+            SpectreLike::Spectre(spectre) => spectre.bbox(),
+            SpectreLike::SuperSpectre(super_spectre) => super_spectre.bbox(),
+            SpectreLike::Skeleton(skeleton) => skeleton.bbox(),
         }
     }
 }
@@ -69,10 +67,10 @@ impl SpectreLike {
         }
     }
 
-    pub fn iter(&self, aabb: Aabb) -> SpectreIter {
+    pub fn iter(&self, bbox: Aabb) -> SpectreIter {
         match self {
             SpectreLike::Spectre(_) => unimplemented!("SpectreLike::Spectre"),
-            SpectreLike::SuperSpectre(super_spectre) => super_spectre.iter(aabb),
+            SpectreLike::SuperSpectre(super_spectre) => super_spectre.iter(bbox),
             SpectreLike::Skeleton(_) => unimplemented!("SpectreLike::Skeleton"),
         }
     }
@@ -85,12 +83,12 @@ impl SpectreLike {
         }
     }
 
-    pub fn update(&mut self, aabb: &Aabb) {
+    pub fn update(&mut self, bbox: &Aabb) {
         match self {
             SpectreLike::Spectre(_) => {}
             SpectreLike::SuperSpectre(super_spectre) => {
-                if super_spectre.aabb().has_intersection(aabb) {
-                    super_spectre.update_children(aabb);
+                if super_spectre.bbox().has_intersection(bbox) {
+                    super_spectre.update_children(bbox);
                     return;
                 }
                 // super_spectreをskeletonにする
@@ -102,10 +100,10 @@ impl SpectreLike {
                 ));
             }
             SpectreLike::Skeleton(skeleton) => {
-                if !skeleton.aabb().has_intersection(aabb) {
+                if !skeleton.bbox().has_intersection(bbox) {
                     return;
                 }
-                let super_spectre = skeleton.to_super_spectre(aabb);
+                let super_spectre = skeleton.to_super_spectre(bbox);
                 *self = super_spectre.into();
             }
         }
@@ -161,22 +159,22 @@ impl Geometry for MysticLike {
         }
     }
 
-    fn aabb(&self) -> Aabb {
+    fn bbox(&self) -> Aabb {
         match self {
-            MysticLike::Mystic(mystic) => mystic.aabb(),
-            MysticLike::SuperMystic(super_mystic) => super_mystic.aabb(),
-            MysticLike::Skeleton(skeleton) => skeleton.aabb(),
+            MysticLike::Mystic(mystic) => mystic.bbox(),
+            MysticLike::SuperMystic(super_mystic) => super_mystic.bbox(),
+            MysticLike::Skeleton(skeleton) => skeleton.bbox(),
         }
     }
 }
 
 impl MysticLike {
-    pub fn update(&mut self, aabb: &Aabb) {
+    pub fn update(&mut self, bbox: &Aabb) {
         match self {
             MysticLike::Mystic(_) => {}
             MysticLike::SuperMystic(super_mystic) => {
-                if super_mystic.aabb().has_intersection(aabb) {
-                    super_mystic.update_children(aabb);
+                if super_mystic.bbox().has_intersection(bbox) {
+                    super_mystic.update_children(bbox);
                     return;
                 }
                 // super_mysticをskeletonにする
@@ -188,10 +186,10 @@ impl MysticLike {
                 ))
             }
             MysticLike::Skeleton(skeleton) => {
-                if !skeleton.aabb().has_intersection(aabb) {
+                if !skeleton.bbox().has_intersection(bbox) {
                     return;
                 }
-                let super_mystic = skeleton.to_super_spectre(aabb).into_super_mystic();
+                let super_mystic = skeleton.to_super_spectre(bbox).into_super_mystic();
                 *self = super_mystic.into();
             }
         }

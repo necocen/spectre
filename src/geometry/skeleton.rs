@@ -1,9 +1,9 @@
 use crate::{
     geometry::{Spectre, SpectreLike},
-    utils::{Angle, HexVec},
+    utils::{Aabb, Angle, HexVec},
 };
 
-use super::{Aabb, Anchor, Geometry, SuperSpectre, MIN_PARTIAL_SUPER_SPECTRE_LEVEL};
+use super::{Anchor, Geometry, SuperSpectre, MIN_PARTIAL_SUPER_SPECTRE_LEVEL};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Skeleton {
@@ -50,7 +50,7 @@ impl Geometry for Skeleton {
         }
     }
 
-    fn aabb(&self) -> Aabb {
+    fn bbox(&self) -> Aabb {
         let points = [self.anchor1, self.anchor2, self.anchor3, self.anchor4];
         let mut min_x = f32::INFINITY;
         let mut min_y = f32::INFINITY;
@@ -260,7 +260,7 @@ impl Skeleton {
         new_skeleton
     }
 
-    pub fn to_super_spectre(&self, aabb: &Aabb) -> SuperSpectre {
+    pub fn to_super_spectre(&self, bbox: &Aabb) -> SuperSpectre {
         if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL {
             // 小さいlevelのSkeletonはそのままSuperSpectreに変換
             return SuperSpectre::new_with_anchor(
@@ -275,8 +275,8 @@ impl Skeleton {
             .to_sub_skeletons()
             .into_iter()
             .map(|sub_skeleton| {
-                if sub_skeleton.aabb().has_intersection(aabb) {
-                    SpectreLike::from(sub_skeleton.to_super_spectre(aabb))
+                if sub_skeleton.bbox().has_intersection(bbox) {
+                    SpectreLike::from(sub_skeleton.to_super_spectre(bbox))
                 } else {
                     SpectreLike::Skeleton(sub_skeleton)
                 }

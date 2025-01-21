@@ -1,6 +1,6 @@
-use crate::utils::{Angle, HexValue, HexVec};
+use crate::utils::{Aabb, Angle, HexValue, HexVec};
 
-use super::{Aabb, Anchor, Geometry};
+use super::{Anchor, Geometry};
 
 /// タイルの形状を表す
 #[derive(Clone, Copy)]
@@ -10,7 +10,7 @@ pub struct Spectre {
     /// アンカー1の座標
     pub anchor1: HexVec,
     /// bounding box
-    aabb: Aabb,
+    bbox: Aabb,
 }
 
 impl Geometry for Spectre {
@@ -27,8 +27,8 @@ impl Geometry for Spectre {
             + self.angle
     }
 
-    fn aabb(&self) -> Aabb {
-        self.aabb
+    fn bbox(&self) -> Aabb {
+        self.bbox
     }
 }
 
@@ -111,12 +111,12 @@ impl Spectre {
             max_y = max_y.max(y);
         }
 
-        let aabb = Aabb::new(min_x, min_y, max_x, max_y);
+        let bbox = Aabb::new(min_x, min_y, max_x, max_y);
 
         Self {
             angle,
             anchor1: points[0],
-            aabb,
+            bbox,
         }
     }
 
@@ -194,7 +194,7 @@ impl Spectre {
 pub struct Mystic {
     pub a: Spectre,
     pub b: Spectre,
-    aabb: Aabb,
+    bbox: Aabb,
 }
 
 impl Geometry for Mystic {
@@ -210,14 +210,14 @@ impl Geometry for Mystic {
         self.a.rev_edge_direction(anchor)
     }
 
-    fn aabb(&self) -> Aabb {
-        self.aabb
+    fn bbox(&self) -> Aabb {
+        self.bbox
     }
 }
 
 impl Mystic {
     pub fn new(a: Spectre, b: Spectre) -> Self {
-        let aabb = a.aabb.union(&b.aabb);
-        Self { a, b, aabb }
+        let bbox = a.bbox.union(&b.bbox);
+        Self { a, b, bbox }
     }
 }

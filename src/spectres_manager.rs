@@ -1,8 +1,8 @@
 use bevy::prelude::Resource;
 
 use crate::{
-    geometry::{Aabb, Anchor, Skeleton, SpectreIter, SuperSpectre},
-    utils::{Angle, HexVec},
+    geometry::{Anchor, Skeleton, SpectreIter, SuperSpectre},
+    utils::{Aabb, Angle, HexVec},
 };
 
 #[derive(Resource)]
@@ -39,11 +39,11 @@ impl SpectresManager {
         }
     }
 
-    pub fn update(&mut self, aabb: &Aabb) {
-        self.spectres.update_children(aabb);
+    pub fn update(&mut self, bbox: &Aabb) {
+        self.spectres.update_children(bbox);
     }
 
-    pub fn spectres_in(&self, aabb: &Aabb) -> SpectreIter {
-        self.spectres.iter(*aabb)
+    pub fn spectres_in(&self, bbox: &Aabb) -> SpectreIter {
+        self.spectres.iter(*bbox)
     }
 }
