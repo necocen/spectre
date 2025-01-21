@@ -12,7 +12,7 @@ pub struct SpectresManager {
 
 impl SpectresManager {
     pub fn new() -> Self {
-        let skeleton = Skeleton::new_with_anchor(5, HexVec::ZERO, Anchor::Anchor1, Angle::ZERO)
+        let skeleton = Skeleton::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO, 5)
             .to_spectre_cluster(&Aabb::NULL);
         let spectres = Box::new(skeleton);
         Self { spectres }
@@ -26,24 +26,24 @@ impl SpectresManager {
 
         // 現在のSuperSpectreをAまたはFとして上位のSuperSpectreを生成する
         let mut spectres = Box::new(
-            Skeleton::new_with_anchor(1, HexVec::ZERO, Anchor::Anchor1, Angle::ZERO)
+            Skeleton::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO, 1)
                 .to_spectre_cluster(&Aabb::NULL),
         );
         std::mem::swap(&mut self.spectres, &mut spectres);
         if spectres.level % 2 == 0 {
             tracing::info!("Expand from A");
-            self.spectres = Box::new(SpectreCluster::from_child_a(*spectres));
+            self.spectres = Box::new(SpectreCluster::with_child_a(*spectres));
         } else {
             tracing::info!("Expand from F");
-            self.spectres = Box::new(SpectreCluster::from_child_f(*spectres));
+            self.spectres = Box::new(SpectreCluster::with_child_f(*spectres));
         }
     }
 
     pub fn update(&mut self, bbox: &Aabb) {
-        self.spectres.update_children(bbox);
+        self.spectres.update(bbox);
     }
 
     pub fn spectres_in(&self, bbox: &Aabb) -> SpectreIter {
-        self.spectres.iter(*bbox)
+        self.spectres.spectres_in(*bbox)
     }
 }

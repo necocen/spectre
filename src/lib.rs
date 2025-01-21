@@ -56,16 +56,16 @@ fn setup_tiles(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 #[inline]
 fn to_instance_data(spectre: &Spectre) -> InstanceData {
-    let anchor_pos = spectre.point(Anchor::Anchor1).to_vec2();
+    let anchor_pos = spectre.coordinate(Anchor::Anchor1).to_vec2();
     InstanceData {
         position: anchor_pos.extend(0.0),
-        angle: spectre.angle.to_radians(),
+        angle: spectre.rotation.to_radians(),
     }
 }
 
 fn setup_mesh(meshes: &mut ResMut<Assets<Mesh>>) -> Handle<Mesh> {
     let mut path_builder = Path::builder();
-    let points = Spectre::new_with_anchor(HexVec::ZERO, Anchor::Anchor1, Angle::ZERO).all_points();
+    let points = Spectre::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO).vertices();
     let points_vec2: Vec<Vec2> = points.iter().map(|p| p.to_vec2()).collect();
     path_builder.begin(Point::new(points_vec2[0].x, points_vec2[0].y));
     for point in points_vec2.iter().skip(1) {

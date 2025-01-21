@@ -5,7 +5,7 @@ use spectre::{
 };
 
 fn create_super_spectre(level: usize) -> SpectreCluster {
-    SpectreCluster::new_with_anchor(level, HexVec::ZERO, Anchor::Anchor1, Angle::ZERO)
+    SpectreCluster::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO, level)
 }
 
 fn create_test_bboxes() -> Vec<(String, Aabb)> {

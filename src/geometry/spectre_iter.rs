@@ -37,15 +37,15 @@ impl<'a> Iterator for SpectreIter<'a> {
                     if mystic.bbox().has_intersection(&self.bbox) {
                         if index <= parent.max_index() {
                             // Mysticのaを判定する
-                            if mystic.a.bbox().has_intersection(&self.bbox) {
+                            if mystic.lower.bbox().has_intersection(&self.bbox) {
                                 self.parents.push((parent, parent.max_index() + 1));
-                                return Some(&mystic.a);
+                                return Some(&mystic.lower);
                             }
                         }
                         // Mysticのbを判定する
-                        if mystic.b.bbox().has_intersection(&self.bbox) {
+                        if mystic.upper.bbox().has_intersection(&self.bbox) {
                             // 最後なのでparentsに追加しない
-                            return Some(&mystic.b);
+                            return Some(&mystic.upper);
                         }
                     }
                 }

@@ -11,19 +11,19 @@ pub struct Skeleton {
     anchor2: HexVec,
     anchor3: HexVec,
     anchor4: HexVec,
-    before_anchor1: Angle,
-    after_anchor1: Angle,
-    before_anchor2: Angle,
-    after_anchor2: Angle,
-    before_anchor3: Angle,
-    after_anchor3: Angle,
-    before_anchor4: Angle,
-    after_anchor4: Angle,
+    edge_direction_into_anchor1: Angle,
+    edge_direction_from_anchor1: Angle,
+    edge_direction_into_anchor2: Angle,
+    edge_direction_from_anchor2: Angle,
+    edge_direction_into_anchor3: Angle,
+    edge_direction_from_anchor3: Angle,
+    edge_direction_into_anchor4: Angle,
+    edge_direction_from_anchor4: Angle,
     pub level: usize,
 }
 
 impl Geometry for Skeleton {
-    fn point(&self, anchor: Anchor) -> HexVec {
+    fn coordinate(&self, anchor: Anchor) -> HexVec {
         match anchor {
             Anchor::Anchor1 => self.anchor1,
             Anchor::Anchor2 => self.anchor2,
@@ -32,21 +32,21 @@ impl Geometry for Skeleton {
         }
     }
 
-    fn edge_direction(&self, anchor: Anchor) -> Angle {
+    fn edge_direction_from(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self.after_anchor1,
-            Anchor::Anchor2 => self.after_anchor2,
-            Anchor::Anchor3 => self.after_anchor3,
-            Anchor::Anchor4 => self.after_anchor4,
+            Anchor::Anchor1 => self.edge_direction_from_anchor1,
+            Anchor::Anchor2 => self.edge_direction_from_anchor2,
+            Anchor::Anchor3 => self.edge_direction_from_anchor3,
+            Anchor::Anchor4 => self.edge_direction_from_anchor4,
         }
     }
 
-    fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
+    fn edge_direction_into(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self.before_anchor1,
-            Anchor::Anchor2 => self.before_anchor2,
-            Anchor::Anchor3 => self.before_anchor3,
-            Anchor::Anchor4 => self.before_anchor4,
+            Anchor::Anchor1 => self.edge_direction_into_anchor1,
+            Anchor::Anchor2 => self.edge_direction_into_anchor2,
+            Anchor::Anchor3 => self.edge_direction_into_anchor3,
+            Anchor::Anchor4 => self.edge_direction_into_anchor4,
         }
     }
 
@@ -82,176 +82,176 @@ impl Geometry for Skeleton {
 
 impl From<Spectre> for Skeleton {
     fn from(spectre: Spectre) -> Self {
-        let anchor1 = spectre.point(Anchor::Anchor1);
-        let anchor2 = spectre.point(Anchor::Anchor2);
-        let anchor3 = spectre.point(Anchor::Anchor3);
-        let anchor4 = spectre.point(Anchor::Anchor4);
-        let before_anchor1 = spectre.rev_edge_direction(Anchor::Anchor1);
-        let after_anchor1 = spectre.edge_direction(Anchor::Anchor1);
-        let before_anchor2 = spectre.rev_edge_direction(Anchor::Anchor2);
-        let after_anchor2 = spectre.edge_direction(Anchor::Anchor2);
-        let before_anchor3 = spectre.rev_edge_direction(Anchor::Anchor3);
-        let after_anchor3 = spectre.edge_direction(Anchor::Anchor3);
-        let before_anchor4 = spectre.rev_edge_direction(Anchor::Anchor4);
-        let after_anchor4 = spectre.edge_direction(Anchor::Anchor4);
+        let anchor1 = spectre.coordinate(Anchor::Anchor1);
+        let anchor2 = spectre.coordinate(Anchor::Anchor2);
+        let anchor3 = spectre.coordinate(Anchor::Anchor3);
+        let anchor4 = spectre.coordinate(Anchor::Anchor4);
+        let edge_direction_into_anchor1 = spectre.edge_direction_into(Anchor::Anchor1);
+        let edge_direction_from_anchor1 = spectre.edge_direction_from(Anchor::Anchor1);
+        let edge_direction_into_anchor2 = spectre.edge_direction_into(Anchor::Anchor2);
+        let edge_direction_from_anchor2 = spectre.edge_direction_from(Anchor::Anchor2);
+        let edge_direction_into_anchor3 = spectre.edge_direction_into(Anchor::Anchor3);
+        let edge_direction_from_anchor3 = spectre.edge_direction_from(Anchor::Anchor3);
+        let edge_direction_into_anchor4 = spectre.edge_direction_into(Anchor::Anchor4);
+        let edge_direction_from_anchor4 = spectre.edge_direction_from(Anchor::Anchor4);
         let level = 0;
         Self {
             anchor1,
             anchor2,
             anchor3,
             anchor4,
-            before_anchor1,
-            after_anchor1,
-            before_anchor2,
-            after_anchor2,
-            before_anchor3,
-            after_anchor3,
-            before_anchor4,
-            after_anchor4,
+            edge_direction_into_anchor1,
+            edge_direction_from_anchor1,
+            edge_direction_into_anchor2,
+            edge_direction_from_anchor2,
+            edge_direction_into_anchor3,
+            edge_direction_from_anchor3,
+            edge_direction_into_anchor4,
+            edge_direction_from_anchor4,
             level,
         }
     }
 }
 
 impl Skeleton {
-    pub fn new_with_anchor(
-        level: usize,
-        anchor_point: impl Into<HexVec>,
+    pub fn with_anchor(
         anchor: Anchor,
-        angle: impl Into<Angle>,
+        coordinate: impl Into<HexVec>,
+        edge_direction: impl Into<Angle>,
+        level: usize,
     ) -> Self {
-        let anchor_point = anchor_point.into();
-        let angle = angle.into();
+        let coordinate = coordinate.into();
+        let edge_direction = edge_direction.into();
         let (g, d, b, a) = match anchor {
             Anchor::Anchor1 => {
                 let g = if level == 1 {
-                    Spectre::new_with_anchor(anchor_point, Anchor::Anchor3, angle).into()
+                    Spectre::with_anchor(Anchor::Anchor3, coordinate, edge_direction).into()
                 } else {
-                    Skeleton::new_with_anchor(level - 1, anchor_point, Anchor::Anchor3, angle)
+                    Skeleton::with_anchor(Anchor::Anchor3, coordinate, edge_direction, level - 1)
                 };
-                let h = g.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor4);
-                let a = h.adjacent_skeleton(Anchor::Anchor1, Anchor::Anchor1);
-                let b = a.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let c = b.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                let d = c.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
+                let a = h.connected_skeleton(Anchor::Anchor1, Anchor::Anchor1);
+                let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+                let d = c.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
                 // let e = d.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
                 // let f = e.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
                 (g, d, b, a)
             }
             Anchor::Anchor2 => {
                 let d = if level == 1 {
-                    Spectre::new_with_anchor(anchor_point, Anchor::Anchor2, angle).into()
+                    Spectre::with_anchor(Anchor::Anchor2, coordinate, edge_direction).into()
                 } else {
-                    Skeleton::new_with_anchor(level - 1, anchor_point, Anchor::Anchor2, angle)
+                    Skeleton::with_anchor(Anchor::Anchor2, coordinate, edge_direction, level - 1)
                 };
-                let e = d.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let f = e.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                let g = f.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let h = g.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor4);
-                let a = h.adjacent_skeleton(Anchor::Anchor1, Anchor::Anchor1);
-                let b = a.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+                let g = f.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
+                let a = h.connected_skeleton(Anchor::Anchor1, Anchor::Anchor1);
+                let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
                 // let c = b.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
                 (g, d, b, a)
             }
             Anchor::Anchor3 => {
                 let b = if level == 1 {
-                    Spectre::new_with_anchor(anchor_point, Anchor::Anchor3, angle).into()
+                    Spectre::with_anchor(Anchor::Anchor3, coordinate, edge_direction).into()
                 } else {
-                    Skeleton::new_with_anchor(level - 1, anchor_point, Anchor::Anchor3, angle)
+                    Skeleton::with_anchor(Anchor::Anchor3, coordinate, edge_direction, level - 1)
                 };
-                let c = b.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                let d = c.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let e = d.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let f = e.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                let g = f.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let h = g.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor4);
-                let a = h.adjacent_skeleton(Anchor::Anchor1, Anchor::Anchor1);
+                let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+                let d = c.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+                let g = f.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
+                let a = h.connected_skeleton(Anchor::Anchor1, Anchor::Anchor1);
                 (g, d, b, a)
             }
             Anchor::Anchor4 => {
                 let a = if level == 1 {
-                    Spectre::new_with_anchor(anchor_point, Anchor::Anchor2, angle).into()
+                    Spectre::with_anchor(Anchor::Anchor2, coordinate, edge_direction).into()
                 } else {
-                    Skeleton::new_with_anchor(level - 1, anchor_point, Anchor::Anchor2, angle)
+                    Skeleton::with_anchor(Anchor::Anchor2, coordinate, edge_direction, level - 1)
                 };
-                let b = a.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let c = b.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                let d = c.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let e = d.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let f = e.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                let g = f.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+                let d = c.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+                let g = f.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
                 // let h = g.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor4);
                 (g, d, b, a)
             }
         };
 
-        let anchor1 = g.point(Anchor::Anchor3);
-        let anchor2 = d.point(Anchor::Anchor2);
-        let anchor3 = b.point(Anchor::Anchor3);
-        let anchor4 = a.point(Anchor::Anchor2);
-        let before_anchor1 = g.rev_edge_direction(Anchor::Anchor3);
-        let after_anchor1 = g.edge_direction(Anchor::Anchor3);
-        let before_anchor2 = d.rev_edge_direction(Anchor::Anchor2);
-        let after_anchor2 = d.edge_direction(Anchor::Anchor2);
-        let before_anchor3 = b.rev_edge_direction(Anchor::Anchor3);
-        let after_anchor3 = b.edge_direction(Anchor::Anchor3);
-        let before_anchor4 = a.rev_edge_direction(Anchor::Anchor2);
-        let after_anchor4 = a.edge_direction(Anchor::Anchor2);
+        let anchor1 = g.coordinate(Anchor::Anchor3);
+        let anchor2 = d.coordinate(Anchor::Anchor2);
+        let anchor3 = b.coordinate(Anchor::Anchor3);
+        let anchor4 = a.coordinate(Anchor::Anchor2);
+        let edge_direction_into_anchor1 = g.edge_direction_into(Anchor::Anchor3);
+        let edge_direction_from_anchor1 = g.edge_direction_from(Anchor::Anchor3);
+        let edge_direction_into_anchor2 = d.edge_direction_into(Anchor::Anchor2);
+        let edge_direction_from_anchor2 = d.edge_direction_from(Anchor::Anchor2);
+        let edge_direction_into_anchor3 = b.edge_direction_into(Anchor::Anchor3);
+        let edge_direction_from_anchor3 = b.edge_direction_from(Anchor::Anchor3);
+        let edge_direction_into_anchor4 = a.edge_direction_into(Anchor::Anchor2);
+        let edge_direction_from_anchor4 = a.edge_direction_from(Anchor::Anchor2);
         Self {
             anchor1,
             anchor2,
             anchor3,
             anchor4,
-            before_anchor1,
-            after_anchor1,
-            before_anchor2,
-            after_anchor2,
-            before_anchor3,
-            after_anchor3,
-            before_anchor4,
-            after_anchor4,
+            edge_direction_into_anchor1,
+            edge_direction_from_anchor1,
+            edge_direction_into_anchor2,
+            edge_direction_from_anchor2,
+            edge_direction_into_anchor3,
+            edge_direction_from_anchor3,
+            edge_direction_into_anchor4,
+            edge_direction_from_anchor4,
             level,
         }
     }
 
-    pub fn adjacent_skeleton(&self, from_anchor: Anchor, to_anchor: Anchor) -> Skeleton {
+    pub fn connected_skeleton(&self, from_anchor: Anchor, to_anchor: Anchor) -> Skeleton {
         // 新しいSpectreの角度を計算
         // levelによって頂点を合わせる場合に接合する辺の選びかたが変わる
         let angle = if self.level % 2 == 1 {
             // 奇数番目のlevelでは新しいSuperSpectreを辺が密着するまで時計回りに回転させる
-            self.rev_edge_direction(from_anchor).opposite()
+            self.edge_direction_into(from_anchor).opposite()
         } else {
             // 偶数番目のlevelでは反時計回りに回転させる
-            let rotation =
-                self.edge_direction(to_anchor) - self.rev_edge_direction(to_anchor).opposite();
-            self.edge_direction(from_anchor) + rotation
+            let rotation = self.edge_direction_from(to_anchor)
+                - self.edge_direction_into(to_anchor).opposite();
+            self.edge_direction_from(from_anchor) + rotation
         };
 
         // selfをコピー
         let mut new_skeleton = *self;
 
         // 回転角度を計算（目標のangleと現在のedge_direction(to_anchor)の差分）
-        let rotation = angle - self.edge_direction(to_anchor);
+        let rotation = angle - self.edge_direction_from(to_anchor);
 
         // 全てのanchorを回転
-        let base = self.point(to_anchor);
+        let base = self.coordinate(to_anchor);
         new_skeleton.anchor1 = self.anchor1.rotate(base, rotation);
         new_skeleton.anchor2 = self.anchor2.rotate(base, rotation);
         new_skeleton.anchor3 = self.anchor3.rotate(base, rotation);
         new_skeleton.anchor4 = self.anchor4.rotate(base, rotation);
 
         // 全てのangleを回転
-        new_skeleton.before_anchor1 += rotation;
-        new_skeleton.after_anchor1 += rotation;
-        new_skeleton.before_anchor2 += rotation;
-        new_skeleton.after_anchor2 += rotation;
-        new_skeleton.before_anchor3 += rotation;
-        new_skeleton.after_anchor3 += rotation;
-        new_skeleton.before_anchor4 += rotation;
-        new_skeleton.after_anchor4 += rotation;
+        new_skeleton.edge_direction_into_anchor1 += rotation;
+        new_skeleton.edge_direction_from_anchor1 += rotation;
+        new_skeleton.edge_direction_into_anchor2 += rotation;
+        new_skeleton.edge_direction_from_anchor2 += rotation;
+        new_skeleton.edge_direction_into_anchor3 += rotation;
+        new_skeleton.edge_direction_from_anchor3 += rotation;
+        new_skeleton.edge_direction_into_anchor4 += rotation;
+        new_skeleton.edge_direction_from_anchor4 += rotation;
 
         // 平行移動（self.point(from_anchor)とnew_skeleton.point(to_anchor)を一致させる）
-        let offset = self.point(from_anchor) - new_skeleton.point(to_anchor);
+        let offset = self.coordinate(from_anchor) - new_skeleton.coordinate(to_anchor);
         new_skeleton.anchor1 += offset;
         new_skeleton.anchor2 += offset;
         new_skeleton.anchor3 += offset;
@@ -263,16 +263,16 @@ impl Skeleton {
     pub fn to_spectre_cluster(&self, bbox: &Aabb) -> SpectreCluster {
         if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL {
             // 小さいlevelのSkeletonはそのままSuperSpectreに変換
-            return SpectreCluster::new_with_anchor(
-                self.level,
-                self.anchor1,
+            return SpectreCluster::with_anchor(
                 Anchor::Anchor1,
-                self.after_anchor1,
+                self.anchor1,
+                self.edge_direction_from_anchor1,
+                self.level,
             );
         }
 
         let mut sub_spectre_likes = self
-            .to_sub_skeletons()
+            .into_sub_skeletons()
             .into_iter()
             .map(|sub_skeleton| {
                 if sub_skeleton.bbox().has_intersection(bbox) {
@@ -305,29 +305,29 @@ impl Skeleton {
     }
 
     /// 一つ下のlevelのskeletonのリストに変換
-    fn to_sub_skeletons(self) -> [Skeleton; 8] {
+    fn into_sub_skeletons(self) -> [Skeleton; 8] {
         let a = if self.level == 1 {
-            Spectre::new_with_anchor(
-                self.anchor4,
+            Spectre::with_anchor(
                 Anchor::Anchor2,
-                self.edge_direction(Anchor::Anchor4),
+                self.anchor4,
+                self.edge_direction_from(Anchor::Anchor4),
             )
             .into()
         } else {
-            Skeleton::new_with_anchor(
-                self.level - 1,
-                self.anchor4,
+            Skeleton::with_anchor(
                 Anchor::Anchor2,
-                self.edge_direction(Anchor::Anchor4),
+                self.anchor4,
+                self.edge_direction_from(Anchor::Anchor4),
+                self.level - 1,
             )
         };
-        let b = a.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let c = b.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-        let d = c.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let e = d.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let f = e.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-        let g = f.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let h = g.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor4);
+        let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+        let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+        let d = c.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+        let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+        let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+        let g = f.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+        let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
 
         [a, b, c, d, e, f, g, h]
     }
@@ -349,9 +349,9 @@ mod tests {
             (3, HexVec::ZERO, Anchor::Anchor2, Angle::new(10)),
         ];
 
-        for &(level, point, anchor, angle) in &test_cases {
-            let skeleton = Skeleton::new_with_anchor(level, point, anchor, angle);
-            let cluster = SpectreCluster::new_with_anchor(level, point, anchor, angle);
+        for &(level, coordinate, anchor, edge_direction) in &test_cases {
+            let skeleton = Skeleton::with_anchor(anchor, coordinate, edge_direction, level);
+            let cluster = SpectreCluster::with_anchor(anchor, coordinate, edge_direction, level);
 
             for test_anchor in [
                 Anchor::Anchor1,
@@ -360,8 +360,8 @@ mod tests {
                 Anchor::Anchor4,
             ] {
                 assert_eq!(
-                    skeleton.point(test_anchor),
-                    cluster.point(test_anchor),
+                    skeleton.coordinate(test_anchor),
+                    cluster.coordinate(test_anchor),
                     "Point mismatch for level {}, anchor {:?} at test_anchor {:?}",
                     level,
                     anchor,
@@ -369,8 +369,8 @@ mod tests {
                 );
 
                 assert_eq!(
-                    skeleton.edge_direction(test_anchor),
-                    cluster.edge_direction(test_anchor),
+                    skeleton.edge_direction_from(test_anchor),
+                    cluster.edge_direction_from(test_anchor),
                     "Edge direction mismatch for level {}, anchor {:?} at test_anchor {:?}",
                     level,
                     anchor,
@@ -378,8 +378,8 @@ mod tests {
                 );
 
                 assert_eq!(
-                    skeleton.rev_edge_direction(test_anchor),
-                    cluster.rev_edge_direction(test_anchor),
+                    skeleton.edge_direction_into(test_anchor),
+                    cluster.edge_direction_into(test_anchor),
                     "Reverse edge direction mismatch for level {}, anchor {:?} at test_anchor {:?}",
                     level,
                     anchor,

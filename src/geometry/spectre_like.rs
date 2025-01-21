@@ -1,8 +1,6 @@
 use crate::utils::{Aabb, Angle, HexVec};
 
-use super::{
-    Anchor, Geometry, Mystic, MysticCluster, Skeleton, Spectre, SpectreCluster, SpectreIter,
-};
+use super::{Anchor, Geometry, Mystic, MysticCluster, Skeleton, Spectre, SpectreCluster};
 
 pub enum SpectreLike {
     Spectre(Spectre),
@@ -11,27 +9,27 @@ pub enum SpectreLike {
 }
 
 impl Geometry for SpectreLike {
-    fn point(&self, anchor: Anchor) -> HexVec {
+    fn coordinate(&self, anchor: Anchor) -> HexVec {
         match self {
-            SpectreLike::Spectre(spectre) => spectre.point(anchor),
-            SpectreLike::Cluster(super_spectre) => super_spectre.point(anchor),
-            SpectreLike::Skeleton(skeleton) => skeleton.point(anchor),
+            SpectreLike::Spectre(spectre) => spectre.coordinate(anchor),
+            SpectreLike::Cluster(super_spectre) => super_spectre.coordinate(anchor),
+            SpectreLike::Skeleton(skeleton) => skeleton.coordinate(anchor),
         }
     }
 
-    fn edge_direction(&self, anchor: Anchor) -> Angle {
+    fn edge_direction_from(&self, anchor: Anchor) -> Angle {
         match self {
-            SpectreLike::Spectre(spectre) => spectre.edge_direction(anchor),
-            SpectreLike::Cluster(super_spectre) => super_spectre.edge_direction(anchor),
-            SpectreLike::Skeleton(skeleton) => skeleton.edge_direction(anchor),
+            SpectreLike::Spectre(spectre) => spectre.edge_direction_from(anchor),
+            SpectreLike::Cluster(super_spectre) => super_spectre.edge_direction_from(anchor),
+            SpectreLike::Skeleton(skeleton) => skeleton.edge_direction_from(anchor),
         }
     }
 
-    fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
+    fn edge_direction_into(&self, anchor: Anchor) -> Angle {
         match self {
-            SpectreLike::Spectre(spectre) => spectre.rev_edge_direction(anchor),
-            SpectreLike::Cluster(super_spectre) => super_spectre.rev_edge_direction(anchor),
-            SpectreLike::Skeleton(skeleton) => skeleton.rev_edge_direction(anchor),
+            SpectreLike::Spectre(spectre) => spectre.edge_direction_into(anchor),
+            SpectreLike::Cluster(super_spectre) => super_spectre.edge_direction_into(anchor),
+            SpectreLike::Skeleton(skeleton) => skeleton.edge_direction_into(anchor),
         }
     }
 
@@ -45,16 +43,16 @@ impl Geometry for SpectreLike {
 }
 
 impl SpectreLike {
-    pub fn adjacent_spectre_like(&self, from_anchor: Anchor, to_anchor: Anchor) -> SpectreLike {
+    pub fn connected_spectre_like(&self, from_anchor: Anchor, to_anchor: Anchor) -> SpectreLike {
         match self {
             SpectreLike::Spectre(spectre) => {
-                SpectreLike::Spectre(spectre.adjacent_spectre(from_anchor, to_anchor))
+                SpectreLike::Spectre(spectre.connected_spectre(from_anchor, to_anchor))
             }
             SpectreLike::Cluster(super_spectre) => {
-                SpectreLike::Cluster(super_spectre.adjacent_super_spectre(from_anchor, to_anchor))
+                SpectreLike::Cluster(super_spectre.connected_cluster(from_anchor, to_anchor))
             }
             SpectreLike::Skeleton(skeleton) => {
-                SpectreLike::Skeleton(skeleton.adjacent_skeleton(from_anchor, to_anchor))
+                SpectreLike::Skeleton(skeleton.connected_skeleton(from_anchor, to_anchor))
             }
         }
     }
@@ -69,18 +67,10 @@ impl SpectreLike {
         }
     }
 
-    pub fn iter(&self, bbox: Aabb) -> SpectreIter {
-        match self {
-            SpectreLike::Spectre(_) => unimplemented!("SpectreLike::Spectre"),
-            SpectreLike::Cluster(super_spectre) => super_spectre.iter(bbox),
-            SpectreLike::Skeleton(_) => unimplemented!("SpectreLike::Skeleton"),
-        }
-    }
-
     pub fn level(&self) -> usize {
         match self {
             SpectreLike::Spectre(_) => 0,
-            SpectreLike::Cluster(super_spectre) => super_spectre.level,
+            SpectreLike::Cluster(cluster) => cluster.level,
             SpectreLike::Skeleton(skeleton) => skeleton.level,
         }
     }
@@ -88,18 +78,13 @@ impl SpectreLike {
     pub fn update(&mut self, bbox: &Aabb) {
         match self {
             SpectreLike::Spectre(_) => {}
-            SpectreLike::Cluster(super_spectre) => {
-                if super_spectre.bbox().has_intersection(bbox) {
-                    super_spectre.update_children(bbox);
+            SpectreLike::Cluster(cluster) => {
+                if cluster.bbox().has_intersection(bbox) {
+                    cluster.update(bbox);
                     return;
                 }
                 // super_spectreをskeletonにする
-                *self = SpectreLike::Skeleton(Skeleton::new_with_anchor(
-                    super_spectre.level,
-                    super_spectre.point(Anchor::Anchor1),
-                    Anchor::Anchor1,
-                    super_spectre.edge_direction(Anchor::Anchor1),
-                ));
+                *self = SpectreLike::Skeleton(cluster.skeleton());
             }
             SpectreLike::Skeleton(skeleton) => {
                 if !skeleton.bbox().has_intersection(bbox) {
@@ -137,27 +122,27 @@ pub enum MysticLike {
 }
 
 impl Geometry for MysticLike {
-    fn point(&self, anchor: Anchor) -> HexVec {
+    fn coordinate(&self, anchor: Anchor) -> HexVec {
         match self {
-            MysticLike::Mystic(mystic) => mystic.point(anchor),
-            MysticLike::Cluster(cluster) => cluster.point(anchor),
-            MysticLike::Skeleton(skeleton) => skeleton.point(anchor),
+            MysticLike::Mystic(mystic) => mystic.coordinate(anchor),
+            MysticLike::Cluster(cluster) => cluster.coordinate(anchor),
+            MysticLike::Skeleton(skeleton) => skeleton.coordinate(anchor),
         }
     }
 
-    fn edge_direction(&self, anchor: Anchor) -> Angle {
+    fn edge_direction_from(&self, anchor: Anchor) -> Angle {
         match self {
-            MysticLike::Mystic(mystic) => mystic.edge_direction(anchor),
-            MysticLike::Cluster(cluster) => cluster.edge_direction(anchor),
-            MysticLike::Skeleton(skeleton) => skeleton.edge_direction(anchor),
+            MysticLike::Mystic(mystic) => mystic.edge_direction_from(anchor),
+            MysticLike::Cluster(cluster) => cluster.edge_direction_from(anchor),
+            MysticLike::Skeleton(skeleton) => skeleton.edge_direction_from(anchor),
         }
     }
 
-    fn rev_edge_direction(&self, anchor: Anchor) -> Angle {
+    fn edge_direction_into(&self, anchor: Anchor) -> Angle {
         match self {
-            MysticLike::Mystic(mystic) => mystic.rev_edge_direction(anchor),
-            MysticLike::Cluster(cluster) => cluster.rev_edge_direction(anchor),
-            MysticLike::Skeleton(skeleton) => skeleton.rev_edge_direction(anchor),
+            MysticLike::Mystic(mystic) => mystic.edge_direction_into(anchor),
+            MysticLike::Cluster(cluster) => cluster.edge_direction_into(anchor),
+            MysticLike::Skeleton(skeleton) => skeleton.edge_direction_into(anchor),
         }
     }
 
@@ -176,16 +161,11 @@ impl MysticLike {
             MysticLike::Mystic(_) => {}
             MysticLike::Cluster(cluster) => {
                 if cluster.bbox().has_intersection(bbox) {
-                    cluster.update_children(bbox);
+                    cluster.update(bbox);
                     return;
                 }
                 // super_mysticをskeletonにする
-                *self = MysticLike::Skeleton(Skeleton::new_with_anchor(
-                    cluster.level,
-                    cluster.point(Anchor::Anchor1),
-                    Anchor::Anchor1,
-                    cluster.edge_direction(Anchor::Anchor1),
-                ))
+                *self = MysticLike::Skeleton(cluster.skeleton())
             }
             MysticLike::Skeleton(skeleton) => {
                 if !skeleton.bbox().has_intersection(bbox) {
