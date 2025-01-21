@@ -15,6 +15,9 @@ pub struct HexValue {
 
 impl std::fmt::Debug for HexValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.rational == 0 && self.irrational == 0 {
+            return write!(f, "0");
+        }
         if self.rational != 0 {
             if self.rational % 2 == 0 {
                 write!(f, "{}", self.rational / 2)?;
@@ -253,9 +256,9 @@ mod tests {
 
     #[test]
     fn test_display() {
-        assert_eq!(HexValue::new(1, 2).to_string(), "1/2 + 2 * 2/√3");
-        assert_eq!(HexValue::new(-1, -2).to_string(), "-1/2 + 2 * -2/√3");
-        assert_eq!(HexValue::ZERO.to_string(), "0/2 + 2 * 0/√3");
+        assert_eq!(HexValue::new(1, 2).to_string(), "1/2 + 1 * √3");
+        assert_eq!(HexValue::new(-1, -2).to_string(), "-1/2 - 1 * √3");
+        assert_eq!(HexValue::ZERO.to_string(), "0");
     }
 
     #[test]
