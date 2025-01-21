@@ -3,7 +3,7 @@ use crate::{
     utils::{Aabb, Angle, HexVec},
 };
 
-use super::{Anchor, Geometry, SuperSpectre, MIN_PARTIAL_SUPER_SPECTRE_LEVEL};
+use super::{Anchor, Geometry, SpectreCluster, MIN_PARTIAL_SUPER_SPECTRE_LEVEL};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Skeleton {
@@ -260,10 +260,10 @@ impl Skeleton {
         new_skeleton
     }
 
-    pub fn to_super_spectre(&self, bbox: &Aabb) -> SuperSpectre {
+    pub fn to_spectre_cluster(&self, bbox: &Aabb) -> SpectreCluster {
         if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL {
             // 小さいlevelのSkeletonはそのままSuperSpectreに変換
-            return SuperSpectre::new_with_anchor(
+            return SpectreCluster::new_with_anchor(
                 self.level,
                 self.anchor1,
                 Anchor::Anchor1,
@@ -276,7 +276,7 @@ impl Skeleton {
             .into_iter()
             .map(|sub_skeleton| {
                 if sub_skeleton.bbox().has_intersection(bbox) {
-                    SpectreLike::from(sub_skeleton.to_super_spectre(bbox))
+                    SpectreLike::from(sub_skeleton.to_spectre_cluster(bbox))
                 } else {
                     SpectreLike::Skeleton(sub_skeleton)
                 }
@@ -291,7 +291,7 @@ impl Skeleton {
         let b = sub_spectre_likes.pop().unwrap();
         let a = sub_spectre_likes.pop().unwrap();
 
-        SuperSpectre::new(
+        SpectreCluster::new(
             Box::new(a),
             Box::new(b),
             Box::new(c),
@@ -351,7 +351,7 @@ mod tests {
 
         for &(level, point, anchor, angle) in &test_cases {
             let skeleton = Skeleton::new_with_anchor(level, point, anchor, angle);
-            let super_spectre = SuperSpectre::new_with_anchor(level, point, anchor, angle);
+            let cluster = SpectreCluster::new_with_anchor(level, point, anchor, angle);
 
             for test_anchor in [
                 Anchor::Anchor1,
@@ -361,7 +361,7 @@ mod tests {
             ] {
                 assert_eq!(
                     skeleton.point(test_anchor),
-                    super_spectre.point(test_anchor),
+                    cluster.point(test_anchor),
                     "Point mismatch for level {}, anchor {:?} at test_anchor {:?}",
                     level,
                     anchor,
@@ -370,7 +370,7 @@ mod tests {
 
                 assert_eq!(
                     skeleton.edge_direction(test_anchor),
-                    super_spectre.edge_direction(test_anchor),
+                    cluster.edge_direction(test_anchor),
                     "Edge direction mismatch for level {}, anchor {:?} at test_anchor {:?}",
                     level,
                     anchor,
@@ -379,7 +379,7 @@ mod tests {
 
                 assert_eq!(
                     skeleton.rev_edge_direction(test_anchor),
-                    super_spectre.rev_edge_direction(test_anchor),
+                    cluster.rev_edge_direction(test_anchor),
                     "Reverse edge direction mismatch for level {}, anchor {:?} at test_anchor {:?}",
                     level,
                     anchor,

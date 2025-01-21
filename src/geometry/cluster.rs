@@ -8,7 +8,7 @@ use super::{
     MIN_PARTIAL_SUPER_SPECTRE_LEVEL,
 };
 
-pub struct SuperSpectre {
+pub struct SpectreCluster {
     a: Box<SpectreLike>,
     b: Box<SpectreLike>,
     c: Box<SpectreLike>,
@@ -21,7 +21,7 @@ pub struct SuperSpectre {
     bbox: Aabb,
 }
 
-impl Geometry for SuperSpectre {
+impl Geometry for SpectreCluster {
     fn point(&self, anchor: Anchor) -> HexVec {
         match anchor {
             Anchor::Anchor1 => self.g.point(Anchor::Anchor3),
@@ -54,7 +54,7 @@ impl Geometry for SuperSpectre {
     }
 }
 
-impl SuperSpectre {
+impl SpectreCluster {
     pub fn iter(&self, bbox: Aabb) -> SpectreIter<'_> {
         SpectreIter {
             parents: vec![(self, 0)],
@@ -115,7 +115,7 @@ impl SuperSpectre {
         }
     }
 
-    pub fn from_child_a(a: SuperSpectre) -> Self {
+    pub fn from_child_a(a: SpectreCluster) -> Self {
         let a_skeleton = Skeleton::new_with_anchor(
             a.level,
             a.point(Anchor::Anchor1),
@@ -142,7 +142,7 @@ impl SuperSpectre {
         )
     }
 
-    pub fn from_child_f(f: SuperSpectre) -> Self {
+    pub fn from_child_f(f: SpectreCluster) -> Self {
         let f_skeleton = Skeleton::new_with_anchor(
             f.level,
             f.point(Anchor::Anchor1),
@@ -185,7 +185,7 @@ impl SuperSpectre {
                         angle,
                     ))
                 } else {
-                    SpectreLike::from(SuperSpectre::new_with_anchor(
+                    SpectreLike::from(SpectreCluster::new_with_anchor(
                         level - 1,
                         anchor_point,
                         Anchor::Anchor3,
@@ -220,7 +220,7 @@ impl SuperSpectre {
                         angle,
                     ))
                 } else {
-                    SpectreLike::from(SuperSpectre::new_with_anchor(
+                    SpectreLike::from(SpectreCluster::new_with_anchor(
                         level - 1,
                         anchor_point,
                         Anchor::Anchor2,
@@ -255,7 +255,7 @@ impl SuperSpectre {
                         angle,
                     ))
                 } else {
-                    SpectreLike::from(SuperSpectre::new_with_anchor(
+                    SpectreLike::from(SpectreCluster::new_with_anchor(
                         level - 1,
                         anchor_point,
                         Anchor::Anchor3,
@@ -290,7 +290,7 @@ impl SuperSpectre {
                         angle,
                     ))
                 } else {
-                    SpectreLike::from(SuperSpectre::new_with_anchor(
+                    SpectreLike::from(SpectreCluster::new_with_anchor(
                         level - 1,
                         anchor_point,
                         Anchor::Anchor2,
@@ -320,7 +320,7 @@ impl SuperSpectre {
         }
     }
 
-    pub fn adjacent_super_spectre(&self, from_anchor: Anchor, to_anchor: Anchor) -> SuperSpectre {
+    pub fn adjacent_super_spectre(&self, from_anchor: Anchor, to_anchor: Anchor) -> SpectreCluster {
         // 新しいSpectreの角度を計算
         // levelによって頂点を合わせる場合に接合する辺の選びかたが変わる
         let angle = if self.level % 2 == 1 {
@@ -333,10 +333,10 @@ impl SuperSpectre {
             self.edge_direction(from_anchor) + rotation
         };
 
-        SuperSpectre::new_with_anchor(self.level, self.point(from_anchor), to_anchor, angle)
+        SpectreCluster::new_with_anchor(self.level, self.point(from_anchor), to_anchor, angle)
     }
 
-    pub fn into_super_mystic(self) -> SuperMystic {
+    pub fn into_mystic_cluster(self) -> MysticCluster {
         // Calculate AABB only for existing parts
         let mut bbox = Aabb::NULL;
         bbox = bbox.union(&self.a.bbox());
@@ -347,7 +347,7 @@ impl SuperSpectre {
         bbox = bbox.union(&self.g.bbox());
         bbox = bbox.union(&self.h.bbox());
 
-        SuperMystic {
+        MysticCluster {
             a: self.a,
             b: self.b,
             c: self.c,
@@ -385,7 +385,7 @@ impl SuperSpectre {
     }
 }
 
-pub struct SuperMystic {
+pub struct MysticCluster {
     a: Box<SpectreLike>,
     b: Box<SpectreLike>,
     c: Box<SpectreLike>,
@@ -397,7 +397,7 @@ pub struct SuperMystic {
     bbox: Aabb,
 }
 
-impl SuperMystic {
+impl MysticCluster {
     pub fn update_children(&mut self, bbox: &Aabb) {
         if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL {
             return;
@@ -421,7 +421,7 @@ impl SuperMystic {
     }
 }
 
-impl Geometry for SuperMystic {
+impl Geometry for MysticCluster {
     fn point(&self, anchor: Anchor) -> HexVec {
         match anchor {
             Anchor::Anchor1 => self.g.point(Anchor::Anchor3),
@@ -454,7 +454,7 @@ impl Geometry for SuperMystic {
     }
 }
 
-impl SpectreContainer for SuperSpectre {
+impl SpectreContainer for SpectreCluster {
     fn get_spectre(&self, index: usize) -> Option<&SpectreLike> {
         match index {
             0 => Some(&self.a),
@@ -481,7 +481,7 @@ impl SpectreContainer for SuperSpectre {
     }
 }
 
-impl SpectreContainer for SuperMystic {
+impl SpectreContainer for MysticCluster {
     fn get_spectre(&self, index: usize) -> Option<&SpectreLike> {
         match index {
             0 => Some(&self.a),

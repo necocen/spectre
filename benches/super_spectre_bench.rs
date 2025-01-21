@@ -1,11 +1,11 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use spectre::{
-    geometry::{Anchor, SuperSpectre},
+    geometry::{Anchor, SpectreCluster},
     utils::{Aabb, Angle, HexVec},
 };
 
-fn create_super_spectre(level: usize) -> SuperSpectre {
-    SuperSpectre::new_with_anchor(level, HexVec::ZERO, Anchor::Anchor1, Angle::ZERO)
+fn create_super_spectre(level: usize) -> SpectreCluster {
+    SpectreCluster::new_with_anchor(level, HexVec::ZERO, Anchor::Anchor1, Angle::ZERO)
 }
 
 fn create_test_bboxes() -> Vec<(String, Aabb)> {

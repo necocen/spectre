@@ -52,7 +52,7 @@ impl<'a> Iterator for SpectreIter<'a> {
             } else {
                 // SuperSpectreを辿る
                 for i in index..parent.max_index() {
-                    if let Some(SpectreLike::SuperSpectre(super_spectre)) = parent.get_spectre(i) {
+                    if let Some(SpectreLike::Cluster(super_spectre)) = parent.get_spectre(i) {
                         if !super_spectre.bbox().has_intersection(&self.bbox) {
                             continue;
                         }
@@ -63,7 +63,7 @@ impl<'a> Iterator for SpectreIter<'a> {
                 }
                 // SuperMysticを辿る
                 if index <= parent.max_index() {
-                    if let Some(MysticLike::SuperMystic(super_mystic)) = parent.get_mystic() {
+                    if let Some(MysticLike::Cluster(super_mystic)) = parent.get_mystic() {
                         if super_mystic.bbox().has_intersection(&self.bbox) {
                             self.parents.push((parent, parent.max_index() + 1));
                             self.parents.push((super_mystic, 0));
