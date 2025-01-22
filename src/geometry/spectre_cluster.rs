@@ -189,7 +189,7 @@ impl SpectreCluster {
         // 新しいSpectreの角度を計算
         // levelによって頂点を合わせる場合に接合する辺の選びかたが変わる
         let angle = if self.level % 2 == 1 {
-            // 奇数番目のlevelでは新しいSuperSpectreを辺が密着するまで時計回りに回転させる
+            // 奇数番目のlevelでは新しいClusterを辺が密着するまで時計回りに回転させる
             self.edge_direction_into(from_anchor).opposite()
         } else {
             // 偶数番目のlevelでは反時計回りに回転させる
