@@ -53,8 +53,8 @@ impl MysticCluster {
     pub fn skeleton(&self) -> Skeleton {
         Skeleton::with_anchor(
             Anchor::Anchor1,
-            self.g.coordinate(Anchor::Anchor1),
-            self.g.edge_direction_from(Anchor::Anchor1),
+            self.coordinate(Anchor::Anchor1),
+            self.edge_direction_from(Anchor::Anchor1),
             self.level,
         )
     }
