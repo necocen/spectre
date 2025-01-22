@@ -181,7 +181,7 @@ impl Skeleton {
         }
 
         let mut sub_spectre_likes = self
-            .into_sub_skeletons()
+            .split_into_skeletons()
             .into_iter()
             .map(|sub_skeleton| {
                 if sub_skeleton.bbox().has_intersection(bbox) {
@@ -274,7 +274,7 @@ impl Skeleton {
     }
 
     /// 一つ下のlevelのskeletonのリストに変換
-    fn into_sub_skeletons(self) -> [Skeleton; 8] {
+    fn split_into_skeletons(self) -> [Skeleton; 8] {
         let a = if self.level == 1 {
             Spectre::with_anchor(
                 Anchor::Anchor2,
