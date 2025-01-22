@@ -4,8 +4,7 @@ use crate::{
 };
 
 use super::{
-    Anchor, MysticCluster, MysticLike, Spectre, SpectreIter, SpectreLike,
-    MIN_PARTIAL_SUPER_SPECTRE_LEVEL,
+    Anchor, MysticCluster, MysticLike, SpectreIter, SpectreLike, MIN_PARTIAL_SUPER_SPECTRE_LEVEL,
 };
 
 pub struct SpectreCluster {
@@ -83,22 +82,15 @@ impl SpectreCluster {
         level: usize,
     ) -> Self {
         let edge_direction: Angle = edge_direction.into();
+        let coordinate: HexVec = coordinate.into();
         match anchor {
             Anchor::Anchor1 => {
-                let g = if level == 1 {
-                    SpectreLike::from(Spectre::with_anchor(
-                        Anchor::Anchor3,
-                        coordinate,
-                        edge_direction,
-                    ))
-                } else {
-                    SpectreLike::from(SpectreCluster::with_anchor(
-                        Anchor::Anchor3,
-                        coordinate,
-                        edge_direction,
-                        level - 1,
-                    ))
-                };
+                let g = SpectreLike::with_anchor(
+                    Anchor::Anchor3,
+                    coordinate,
+                    edge_direction,
+                    level - 1,
+                );
                 let h = g.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
                 let a = h.connected_spectre_like(Anchor::Anchor1, Anchor::Anchor1);
                 let b = a.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
@@ -110,20 +102,12 @@ impl SpectreCluster {
                 Self::new(a, b, c, d, e, f, g, h, level)
             }
             Anchor::Anchor2 => {
-                let d = if level == 1 {
-                    SpectreLike::from(Spectre::with_anchor(
-                        Anchor::Anchor2,
-                        coordinate,
-                        edge_direction,
-                    ))
-                } else {
-                    SpectreLike::from(SpectreCluster::with_anchor(
-                        Anchor::Anchor2,
-                        coordinate,
-                        edge_direction,
-                        level - 1,
-                    ))
-                };
+                let d = SpectreLike::with_anchor(
+                    Anchor::Anchor2,
+                    coordinate,
+                    edge_direction,
+                    level - 1,
+                );
                 let e = d.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
                 let f = e.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
                 let g = f.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
@@ -135,20 +119,12 @@ impl SpectreCluster {
                 Self::new(a, b, c, d, e, f, g, h, level)
             }
             Anchor::Anchor3 => {
-                let b = if level == 1 {
-                    SpectreLike::from(Spectre::with_anchor(
-                        Anchor::Anchor3,
-                        coordinate,
-                        edge_direction,
-                    ))
-                } else {
-                    SpectreLike::from(SpectreCluster::with_anchor(
-                        Anchor::Anchor3,
-                        coordinate,
-                        edge_direction,
-                        level - 1,
-                    ))
-                };
+                let b = SpectreLike::with_anchor(
+                    Anchor::Anchor3,
+                    coordinate,
+                    edge_direction,
+                    level - 1,
+                );
                 let c = b.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
                 let d = c.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
                 let e = d.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
@@ -160,20 +136,12 @@ impl SpectreCluster {
                 Self::new(a, b, c, d, e, f, g, h, level)
             }
             Anchor::Anchor4 => {
-                let a = if level == 1 {
-                    SpectreLike::from(Spectre::with_anchor(
-                        Anchor::Anchor2,
-                        coordinate,
-                        edge_direction,
-                    ))
-                } else {
-                    SpectreLike::from(SpectreCluster::with_anchor(
-                        Anchor::Anchor2,
-                        coordinate,
-                        edge_direction,
-                        level - 1,
-                    ))
-                };
+                let a = SpectreLike::with_anchor(
+                    Anchor::Anchor2,
+                    coordinate,
+                    edge_direction,
+                    level - 1,
+                );
                 let b = a.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
                 let c = b.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
                 let d = c.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
@@ -188,47 +156,33 @@ impl SpectreCluster {
     }
 
     pub fn with_child_a(a: SpectreCluster) -> Self {
-        let a_skeleton = a.skeleton();
-        let b = a_skeleton.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-        let d = c.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-        let g = f.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
-        Self::new(
-            SpectreLike::from(a),
-            SpectreLike::from(b),
-            SpectreLike::from(c),
-            SpectreLike::from(d),
-            SpectreLike::from(e),
-            SpectreLike::from(f),
-            SpectreLike::from(g),
-            MysticLike::from(h),
-            a_skeleton.level() + 1,
-        )
+        let level = a.level() + 1;
+        let a_skeleton = SpectreLike::from(a.skeleton());
+        let a = SpectreLike::from(a);
+        let b = a_skeleton.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
+        let c = b.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
+        let d = c.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
+        let e = d.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
+        let f = e.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
+        let g = f.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
+        let h = g.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
+        let h = h.into_mystic_like();
+        Self::new(a, b, c, d, e, f, g, h, level)
     }
 
     pub fn with_child_f(f: SpectreCluster) -> Self {
-        let f_skeleton = f.skeleton();
-        let g = f_skeleton.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
-        let a = h.connected_skeleton(Anchor::Anchor1, Anchor::Anchor1);
-        let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-        let d = c.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        Self::new(
-            SpectreLike::from(a),
-            SpectreLike::from(b),
-            SpectreLike::from(c),
-            SpectreLike::from(d),
-            SpectreLike::from(e),
-            SpectreLike::from(f),
-            SpectreLike::from(g),
-            MysticLike::from(h),
-            f_skeleton.level() + 1,
-        )
+        let level = f.level() + 1;
+        let f_skeleton = SpectreLike::from(f.skeleton());
+        let f = SpectreLike::from(f);
+        let g = f_skeleton.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
+        let h = g.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
+        let a = h.connected_spectre_like(Anchor::Anchor1, Anchor::Anchor1);
+        let b = a.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
+        let c = b.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
+        let d = c.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
+        let e = d.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
+        let h = h.into_mystic_like();
+        Self::new(a, b, c, d, e, f, g, h, level)
     }
 
     pub fn connected_cluster(&self, from_anchor: Anchor, to_anchor: Anchor) -> SpectreCluster {

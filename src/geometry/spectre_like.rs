@@ -9,6 +9,24 @@ pub enum SpectreLike {
 }
 
 impl SpectreLike {
+    pub fn with_anchor(
+        anchor: Anchor,
+        coordinate: HexVec,
+        edge_direction: Angle,
+        level: usize,
+    ) -> Self {
+        if level == 0 {
+            SpectreLike::from(Spectre::with_anchor(anchor, coordinate, edge_direction))
+        } else {
+            SpectreLike::from(SpectreCluster::with_anchor(
+                anchor,
+                coordinate,
+                edge_direction,
+                level,
+            ))
+        }
+    }
+
     pub fn connected_spectre_like(&self, from_anchor: Anchor, to_anchor: Anchor) -> SpectreLike {
         match self {
             SpectreLike::Spectre(spectre) => {
