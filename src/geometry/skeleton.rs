@@ -3,7 +3,7 @@ use crate::{
     utils::{Aabb, Angle, HexVec},
 };
 
-use super::{Anchor, Geometry, SpectreCluster, MIN_PARTIAL_SUPER_SPECTRE_LEVEL};
+use super::{Anchor, SpectreCluster, MIN_PARTIAL_SUPER_SPECTRE_LEVEL};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Skeleton {
@@ -19,98 +19,7 @@ pub struct Skeleton {
     edge_direction_from_anchor3: Angle,
     edge_direction_into_anchor4: Angle,
     edge_direction_from_anchor4: Angle,
-    pub level: usize,
-}
-
-impl Geometry for Skeleton {
-    fn coordinate(&self, anchor: Anchor) -> HexVec {
-        match anchor {
-            Anchor::Anchor1 => self.anchor1,
-            Anchor::Anchor2 => self.anchor2,
-            Anchor::Anchor3 => self.anchor3,
-            Anchor::Anchor4 => self.anchor4,
-        }
-    }
-
-    fn edge_direction_from(&self, anchor: Anchor) -> Angle {
-        match anchor {
-            Anchor::Anchor1 => self.edge_direction_from_anchor1,
-            Anchor::Anchor2 => self.edge_direction_from_anchor2,
-            Anchor::Anchor3 => self.edge_direction_from_anchor3,
-            Anchor::Anchor4 => self.edge_direction_from_anchor4,
-        }
-    }
-
-    fn edge_direction_into(&self, anchor: Anchor) -> Angle {
-        match anchor {
-            Anchor::Anchor1 => self.edge_direction_into_anchor1,
-            Anchor::Anchor2 => self.edge_direction_into_anchor2,
-            Anchor::Anchor3 => self.edge_direction_into_anchor3,
-            Anchor::Anchor4 => self.edge_direction_into_anchor4,
-        }
-    }
-
-    fn bbox(&self) -> Aabb {
-        let points = [self.anchor1, self.anchor2, self.anchor3, self.anchor4];
-        let mut min_x = f32::INFINITY;
-        let mut min_y = f32::INFINITY;
-        let mut max_x = f32::NEG_INFINITY;
-        let mut max_y = f32::NEG_INFINITY;
-
-        for p in points.iter() {
-            let x = p.x.to_f32();
-            let y = p.y.to_f32();
-            min_x = min_x.min(x);
-            min_y = min_y.min(y);
-            max_x = max_x.max(x);
-            max_y = max_y.max(y);
-        }
-
-        let expanded_min_x = min_x - (max_x - min_x) * 0.5;
-        let expanded_min_y = min_y - (max_y - min_y) * 0.5;
-        let expanded_max_x = max_x + (max_x - min_x) * 0.5;
-        let expanded_max_y = max_y + (max_y - min_y) * 0.5;
-
-        Aabb::new(
-            expanded_min_x,
-            expanded_min_y,
-            expanded_max_x,
-            expanded_max_y,
-        )
-    }
-}
-
-impl From<Spectre> for Skeleton {
-    fn from(spectre: Spectre) -> Self {
-        let anchor1 = spectre.coordinate(Anchor::Anchor1);
-        let anchor2 = spectre.coordinate(Anchor::Anchor2);
-        let anchor3 = spectre.coordinate(Anchor::Anchor3);
-        let anchor4 = spectre.coordinate(Anchor::Anchor4);
-        let edge_direction_into_anchor1 = spectre.edge_direction_into(Anchor::Anchor1);
-        let edge_direction_from_anchor1 = spectre.edge_direction_from(Anchor::Anchor1);
-        let edge_direction_into_anchor2 = spectre.edge_direction_into(Anchor::Anchor2);
-        let edge_direction_from_anchor2 = spectre.edge_direction_from(Anchor::Anchor2);
-        let edge_direction_into_anchor3 = spectre.edge_direction_into(Anchor::Anchor3);
-        let edge_direction_from_anchor3 = spectre.edge_direction_from(Anchor::Anchor3);
-        let edge_direction_into_anchor4 = spectre.edge_direction_into(Anchor::Anchor4);
-        let edge_direction_from_anchor4 = spectre.edge_direction_from(Anchor::Anchor4);
-        let level = 0;
-        Self {
-            anchor1,
-            anchor2,
-            anchor3,
-            anchor4,
-            edge_direction_into_anchor1,
-            edge_direction_from_anchor1,
-            edge_direction_into_anchor2,
-            edge_direction_from_anchor2,
-            edge_direction_into_anchor3,
-            edge_direction_from_anchor3,
-            edge_direction_into_anchor4,
-            edge_direction_from_anchor4,
-            level,
-        }
-    }
+    level: usize,
 }
 
 impl Skeleton {
@@ -304,6 +213,66 @@ impl Skeleton {
         )
     }
 
+    pub fn coordinate(&self, anchor: Anchor) -> HexVec {
+        match anchor {
+            Anchor::Anchor1 => self.anchor1,
+            Anchor::Anchor2 => self.anchor2,
+            Anchor::Anchor3 => self.anchor3,
+            Anchor::Anchor4 => self.anchor4,
+        }
+    }
+
+    pub fn edge_direction_from(&self, anchor: Anchor) -> Angle {
+        match anchor {
+            Anchor::Anchor1 => self.edge_direction_from_anchor1,
+            Anchor::Anchor2 => self.edge_direction_from_anchor2,
+            Anchor::Anchor3 => self.edge_direction_from_anchor3,
+            Anchor::Anchor4 => self.edge_direction_from_anchor4,
+        }
+    }
+
+    pub fn edge_direction_into(&self, anchor: Anchor) -> Angle {
+        match anchor {
+            Anchor::Anchor1 => self.edge_direction_into_anchor1,
+            Anchor::Anchor2 => self.edge_direction_into_anchor2,
+            Anchor::Anchor3 => self.edge_direction_into_anchor3,
+            Anchor::Anchor4 => self.edge_direction_into_anchor4,
+        }
+    }
+
+    pub fn bbox(&self) -> Aabb {
+        let points = [self.anchor1, self.anchor2, self.anchor3, self.anchor4];
+        let mut min_x = f32::INFINITY;
+        let mut min_y = f32::INFINITY;
+        let mut max_x = f32::NEG_INFINITY;
+        let mut max_y = f32::NEG_INFINITY;
+
+        for p in points.iter() {
+            let x = p.x.to_f32();
+            let y = p.y.to_f32();
+            min_x = min_x.min(x);
+            min_y = min_y.min(y);
+            max_x = max_x.max(x);
+            max_y = max_y.max(y);
+        }
+
+        let expanded_min_x = min_x - (max_x - min_x) * 0.5;
+        let expanded_min_y = min_y - (max_y - min_y) * 0.5;
+        let expanded_max_x = max_x + (max_x - min_x) * 0.5;
+        let expanded_max_y = max_y + (max_y - min_y) * 0.5;
+
+        Aabb::new(
+            expanded_min_x,
+            expanded_min_y,
+            expanded_max_x,
+            expanded_max_y,
+        )
+    }
+
+    pub fn level(&self) -> usize {
+        self.level
+    }
+
     /// 一つ下のlevelのskeletonのリストに変換
     fn into_sub_skeletons(self) -> [Skeleton; 8] {
         let a = if self.level == 1 {
@@ -330,6 +299,39 @@ impl Skeleton {
         let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
 
         [a, b, c, d, e, f, g, h]
+    }
+}
+
+impl From<Spectre> for Skeleton {
+    fn from(spectre: Spectre) -> Self {
+        let anchor1 = spectre.coordinate(Anchor::Anchor1);
+        let anchor2 = spectre.coordinate(Anchor::Anchor2);
+        let anchor3 = spectre.coordinate(Anchor::Anchor3);
+        let anchor4 = spectre.coordinate(Anchor::Anchor4);
+        let edge_direction_into_anchor1 = spectre.edge_direction_into(Anchor::Anchor1);
+        let edge_direction_from_anchor1 = spectre.edge_direction_from(Anchor::Anchor1);
+        let edge_direction_into_anchor2 = spectre.edge_direction_into(Anchor::Anchor2);
+        let edge_direction_from_anchor2 = spectre.edge_direction_from(Anchor::Anchor2);
+        let edge_direction_into_anchor3 = spectre.edge_direction_into(Anchor::Anchor3);
+        let edge_direction_from_anchor3 = spectre.edge_direction_from(Anchor::Anchor3);
+        let edge_direction_into_anchor4 = spectre.edge_direction_into(Anchor::Anchor4);
+        let edge_direction_from_anchor4 = spectre.edge_direction_from(Anchor::Anchor4);
+        let level = 0;
+        Self {
+            anchor1,
+            anchor2,
+            anchor3,
+            anchor4,
+            edge_direction_into_anchor1,
+            edge_direction_from_anchor1,
+            edge_direction_into_anchor2,
+            edge_direction_from_anchor2,
+            edge_direction_into_anchor3,
+            edge_direction_from_anchor3,
+            edge_direction_into_anchor4,
+            edge_direction_from_anchor4,
+            level,
+        }
     }
 }
 

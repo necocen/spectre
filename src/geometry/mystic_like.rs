@@ -1,45 +1,11 @@
 use crate::utils::{Aabb, Angle, HexVec};
 
-use super::{Anchor, Geometry, Mystic, MysticCluster, Skeleton};
+use super::{Anchor, Mystic, MysticCluster, Skeleton};
 
 pub enum MysticLike {
     Mystic(Mystic),
     Cluster(MysticCluster),
     Skeleton(Skeleton),
-}
-
-impl Geometry for MysticLike {
-    fn coordinate(&self, anchor: Anchor) -> HexVec {
-        match self {
-            MysticLike::Mystic(mystic) => mystic.coordinate(anchor),
-            MysticLike::Cluster(cluster) => cluster.coordinate(anchor),
-            MysticLike::Skeleton(skeleton) => skeleton.coordinate(anchor),
-        }
-    }
-
-    fn edge_direction_from(&self, anchor: Anchor) -> Angle {
-        match self {
-            MysticLike::Mystic(mystic) => mystic.edge_direction_from(anchor),
-            MysticLike::Cluster(cluster) => cluster.edge_direction_from(anchor),
-            MysticLike::Skeleton(skeleton) => skeleton.edge_direction_from(anchor),
-        }
-    }
-
-    fn edge_direction_into(&self, anchor: Anchor) -> Angle {
-        match self {
-            MysticLike::Mystic(mystic) => mystic.edge_direction_into(anchor),
-            MysticLike::Cluster(cluster) => cluster.edge_direction_into(anchor),
-            MysticLike::Skeleton(skeleton) => skeleton.edge_direction_into(anchor),
-        }
-    }
-
-    fn bbox(&self) -> Aabb {
-        match self {
-            MysticLike::Mystic(mystic) => mystic.bbox(),
-            MysticLike::Cluster(cluster) => cluster.bbox(),
-            MysticLike::Skeleton(skeleton) => skeleton.bbox(),
-        }
-    }
 }
 
 impl MysticLike {
@@ -61,6 +27,38 @@ impl MysticLike {
                 let super_mystic = skeleton.to_spectre_cluster(bbox).into_mystic_cluster();
                 *self = super_mystic.into();
             }
+        }
+    }
+
+    pub fn coordinate(&self, anchor: Anchor) -> HexVec {
+        match self {
+            MysticLike::Mystic(mystic) => mystic.coordinate(anchor),
+            MysticLike::Cluster(cluster) => cluster.coordinate(anchor),
+            MysticLike::Skeleton(skeleton) => skeleton.coordinate(anchor),
+        }
+    }
+
+    pub fn edge_direction_from(&self, anchor: Anchor) -> Angle {
+        match self {
+            MysticLike::Mystic(mystic) => mystic.edge_direction_from(anchor),
+            MysticLike::Cluster(cluster) => cluster.edge_direction_from(anchor),
+            MysticLike::Skeleton(skeleton) => skeleton.edge_direction_from(anchor),
+        }
+    }
+
+    pub fn edge_direction_into(&self, anchor: Anchor) -> Angle {
+        match self {
+            MysticLike::Mystic(mystic) => mystic.edge_direction_into(anchor),
+            MysticLike::Cluster(cluster) => cluster.edge_direction_into(anchor),
+            MysticLike::Skeleton(skeleton) => skeleton.edge_direction_into(anchor),
+        }
+    }
+
+    pub fn bbox(&self) -> Aabb {
+        match self {
+            MysticLike::Mystic(mystic) => mystic.bbox(),
+            MysticLike::Cluster(cluster) => cluster.bbox(),
+            MysticLike::Skeleton(skeleton) => skeleton.bbox(),
         }
     }
 }

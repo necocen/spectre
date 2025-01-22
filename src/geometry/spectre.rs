@@ -1,34 +1,38 @@
 use crate::utils::{Aabb, Angle, HexValue, HexVec};
 
-use super::{Anchor, Geometry, Mystic};
+use super::{Anchor, Mystic};
 
 /// タイルの形状を表す
 #[derive(Clone, Copy)]
 pub struct Spectre {
     /// アンカー1から反時計回りに進む辺の向く方向
-    pub rotation: Angle,
+    rotation: Angle,
     /// アンカー1の座標
     anchor1: HexVec,
     /// bounding box
     bbox: Aabb,
 }
 
-impl Geometry for Spectre {
-    fn coordinate(&self, anchor: Anchor) -> HexVec {
+impl Spectre {
+    pub fn coordinate(&self, anchor: Anchor) -> HexVec {
         self.vertex(anchor.index())
     }
 
-    fn edge_direction_from(&self, anchor: Anchor) -> Angle {
+    pub fn edge_direction_from(&self, anchor: Anchor) -> Angle {
         Self::EDGE_DIRECTIONS[anchor.index()] + self.rotation
     }
 
-    fn edge_direction_into(&self, anchor: Anchor) -> Angle {
+    pub fn edge_direction_into(&self, anchor: Anchor) -> Angle {
         Self::EDGE_DIRECTIONS[(anchor.index() + Self::VERTEX_COUNT - 1) % Self::VERTEX_COUNT]
             + self.rotation
     }
 
-    fn bbox(&self) -> Aabb {
+    pub fn bbox(&self) -> Aabb {
         self.bbox
+    }
+
+    pub fn rotation(&self) -> Angle {
+        self.rotation
     }
 }
 

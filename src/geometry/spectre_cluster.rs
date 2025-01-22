@@ -4,8 +4,8 @@ use crate::{
 };
 
 use super::{
-    Anchor, Geometry, MysticCluster, MysticLike, Spectre, SpectreContainer, SpectreIter,
-    SpectreLike, MIN_PARTIAL_SUPER_SPECTRE_LEVEL,
+    Anchor, MysticCluster, MysticLike, Spectre, SpectreContainer, SpectreIter, SpectreLike,
+    MIN_PARTIAL_SUPER_SPECTRE_LEVEL,
 };
 
 pub struct SpectreCluster {
@@ -17,41 +17,8 @@ pub struct SpectreCluster {
     f: Box<SpectreLike>,
     g: Box<SpectreLike>,
     h: Box<MysticLike>,
-    pub level: usize,
+    level: usize,
     bbox: Aabb,
-}
-
-impl Geometry for SpectreCluster {
-    fn coordinate(&self, anchor: Anchor) -> HexVec {
-        match anchor {
-            Anchor::Anchor1 => self.g.coordinate(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.coordinate(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.coordinate(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.coordinate(Anchor::Anchor2),
-        }
-    }
-
-    fn edge_direction_from(&self, anchor: Anchor) -> Angle {
-        match anchor {
-            Anchor::Anchor1 => self.g.edge_direction_from(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.edge_direction_from(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.edge_direction_from(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.edge_direction_from(Anchor::Anchor2),
-        }
-    }
-
-    fn edge_direction_into(&self, anchor: Anchor) -> Angle {
-        match anchor {
-            Anchor::Anchor1 => self.g.edge_direction_into(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.edge_direction_into(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.edge_direction_into(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.edge_direction_into(Anchor::Anchor2),
-        }
-    }
-
-    fn bbox(&self) -> Aabb {
-        self.bbox
-    }
 }
 
 impl SpectreCluster {
@@ -242,7 +209,7 @@ impl SpectreCluster {
             Box::new(f.into()),
             Box::new(g.into()),
             Box::new(h.into()),
-            a_skeleton.level + 1,
+            a_skeleton.level() + 1,
         )
     }
 
@@ -264,7 +231,7 @@ impl SpectreCluster {
             Box::new(f.into()),
             Box::new(g.into()),
             Box::new(h.into()),
-            f_skeleton.level + 1,
+            f_skeleton.level() + 1,
         )
     }
 
@@ -324,10 +291,42 @@ impl SpectreCluster {
     }
 
     pub fn spectres_in(&self, bbox: Aabb) -> SpectreIter<'_> {
-        SpectreIter {
-            parents: vec![(self, 0)],
-            bbox,
+        SpectreIter::new(self, bbox)
+    }
+
+    pub fn coordinate(&self, anchor: Anchor) -> HexVec {
+        match anchor {
+            Anchor::Anchor1 => self.g.coordinate(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.coordinate(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.coordinate(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.coordinate(Anchor::Anchor2),
         }
+    }
+
+    pub fn edge_direction_from(&self, anchor: Anchor) -> Angle {
+        match anchor {
+            Anchor::Anchor1 => self.g.edge_direction_from(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.edge_direction_from(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.edge_direction_from(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.edge_direction_from(Anchor::Anchor2),
+        }
+    }
+
+    pub fn edge_direction_into(&self, anchor: Anchor) -> Angle {
+        match anchor {
+            Anchor::Anchor1 => self.g.edge_direction_into(Anchor::Anchor3),
+            Anchor::Anchor2 => self.d.edge_direction_into(Anchor::Anchor2),
+            Anchor::Anchor3 => self.b.edge_direction_into(Anchor::Anchor3),
+            Anchor::Anchor4 => self.a.edge_direction_into(Anchor::Anchor2),
+        }
+    }
+
+    pub fn bbox(&self) -> Aabb {
+        self.bbox
+    }
+
+    pub fn level(&self) -> usize {
+        self.level
     }
 }
 

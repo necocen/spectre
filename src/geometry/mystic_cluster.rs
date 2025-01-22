@@ -3,9 +3,7 @@ use crate::{
     utils::{Aabb, Angle, HexVec},
 };
 
-use super::{
-    Anchor, Geometry, MysticLike, SpectreContainer, SpectreLike, MIN_PARTIAL_SUPER_SPECTRE_LEVEL,
-};
+use super::{Anchor, MysticLike, SpectreContainer, SpectreLike, MIN_PARTIAL_SUPER_SPECTRE_LEVEL};
 
 pub struct MysticCluster {
     a: Box<SpectreLike>,
@@ -15,7 +13,7 @@ pub struct MysticCluster {
     f: Box<SpectreLike>,
     g: Box<SpectreLike>,
     h: Box<MysticLike>,
-    pub level: usize,
+    level: usize,
     bbox: Aabb,
 }
 
@@ -82,10 +80,8 @@ impl MysticCluster {
         bbox = bbox.union(&self.h.bbox());
         self.bbox = bbox;
     }
-}
 
-impl Geometry for MysticCluster {
-    fn coordinate(&self, anchor: Anchor) -> HexVec {
+    pub fn coordinate(&self, anchor: Anchor) -> HexVec {
         match anchor {
             Anchor::Anchor1 => self.g.coordinate(Anchor::Anchor3),
             Anchor::Anchor2 => self.d.coordinate(Anchor::Anchor2),
@@ -94,7 +90,7 @@ impl Geometry for MysticCluster {
         }
     }
 
-    fn edge_direction_from(&self, anchor: Anchor) -> Angle {
+    pub fn edge_direction_from(&self, anchor: Anchor) -> Angle {
         match anchor {
             Anchor::Anchor1 => self.g.edge_direction_from(Anchor::Anchor3),
             Anchor::Anchor2 => self.d.edge_direction_from(Anchor::Anchor2),
@@ -103,7 +99,7 @@ impl Geometry for MysticCluster {
         }
     }
 
-    fn edge_direction_into(&self, anchor: Anchor) -> Angle {
+    pub fn edge_direction_into(&self, anchor: Anchor) -> Angle {
         match anchor {
             Anchor::Anchor1 => self.g.edge_direction_into(Anchor::Anchor3),
             Anchor::Anchor2 => self.d.edge_direction_into(Anchor::Anchor2),
@@ -112,7 +108,7 @@ impl Geometry for MysticCluster {
         }
     }
 
-    fn bbox(&self) -> Aabb {
+    pub fn bbox(&self) -> Aabb {
         self.bbox
     }
 }

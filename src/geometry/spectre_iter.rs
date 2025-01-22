@@ -1,6 +1,6 @@
 use crate::utils::Aabb;
 
-use super::{Geometry as _, MysticLike, Spectre, SpectreLike};
+use super::{MysticLike, Spectre, SpectreLike};
 
 pub trait SpectreContainer {
     fn get_spectre(&self, index: usize) -> Option<&SpectreLike>;
@@ -11,8 +11,17 @@ pub trait SpectreContainer {
 
 #[derive(Clone)]
 pub struct SpectreIter<'a> {
-    pub parents: Vec<(&'a dyn SpectreContainer, usize)>,
-    pub bbox: Aabb,
+    parents: Vec<(&'a dyn SpectreContainer, usize)>,
+    bbox: Aabb,
+}
+
+impl<'a> SpectreIter<'a> {
+    pub fn new(root: &'a dyn SpectreContainer, bbox: Aabb) -> SpectreIter<'a> {
+        SpectreIter {
+            parents: vec![(root, 0)],
+            bbox,
+        }
+    }
 }
 
 impl<'a> Iterator for SpectreIter<'a> {
@@ -37,15 +46,15 @@ impl<'a> Iterator for SpectreIter<'a> {
                     if mystic.bbox().has_intersection(&self.bbox) {
                         if index <= parent.max_index() {
                             // Mysticのaを判定する
-                            if mystic.lower.bbox().has_intersection(&self.bbox) {
+                            if mystic.lower().bbox().has_intersection(&self.bbox) {
                                 self.parents.push((parent, parent.max_index() + 1));
-                                return Some(&mystic.lower);
+                                return Some(mystic.lower());
                             }
                         }
                         // Mysticのbを判定する
-                        if mystic.upper.bbox().has_intersection(&self.bbox) {
+                        if mystic.upper().bbox().has_intersection(&self.bbox) {
                             // 最後なのでparentsに追加しない
-                            return Some(&mystic.upper);
+                            return Some(mystic.upper());
                         }
                     }
                 }

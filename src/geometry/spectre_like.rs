@@ -1,45 +1,11 @@
 use crate::utils::{Aabb, Angle, HexVec};
 
-use super::{Anchor, Geometry, MysticLike, Skeleton, Spectre, SpectreCluster};
+use super::{Anchor, MysticLike, Skeleton, Spectre, SpectreCluster};
 
 pub enum SpectreLike {
     Spectre(Spectre),
     Cluster(SpectreCluster),
     Skeleton(Skeleton),
-}
-
-impl Geometry for SpectreLike {
-    fn coordinate(&self, anchor: Anchor) -> HexVec {
-        match self {
-            SpectreLike::Spectre(spectre) => spectre.coordinate(anchor),
-            SpectreLike::Cluster(super_spectre) => super_spectre.coordinate(anchor),
-            SpectreLike::Skeleton(skeleton) => skeleton.coordinate(anchor),
-        }
-    }
-
-    fn edge_direction_from(&self, anchor: Anchor) -> Angle {
-        match self {
-            SpectreLike::Spectre(spectre) => spectre.edge_direction_from(anchor),
-            SpectreLike::Cluster(super_spectre) => super_spectre.edge_direction_from(anchor),
-            SpectreLike::Skeleton(skeleton) => skeleton.edge_direction_from(anchor),
-        }
-    }
-
-    fn edge_direction_into(&self, anchor: Anchor) -> Angle {
-        match self {
-            SpectreLike::Spectre(spectre) => spectre.edge_direction_into(anchor),
-            SpectreLike::Cluster(super_spectre) => super_spectre.edge_direction_into(anchor),
-            SpectreLike::Skeleton(skeleton) => skeleton.edge_direction_into(anchor),
-        }
-    }
-
-    fn bbox(&self) -> Aabb {
-        match self {
-            SpectreLike::Spectre(spectre) => spectre.bbox(),
-            SpectreLike::Cluster(super_spectre) => super_spectre.bbox(),
-            SpectreLike::Skeleton(skeleton) => skeleton.bbox(),
-        }
-    }
 }
 
 impl SpectreLike {
@@ -67,14 +33,6 @@ impl SpectreLike {
         }
     }
 
-    pub fn level(&self) -> usize {
-        match self {
-            SpectreLike::Spectre(_) => 0,
-            SpectreLike::Cluster(cluster) => cluster.level,
-            SpectreLike::Skeleton(skeleton) => skeleton.level,
-        }
-    }
-
     pub fn update(&mut self, bbox: &Aabb) {
         match self {
             SpectreLike::Spectre(_) => {}
@@ -93,6 +51,46 @@ impl SpectreLike {
                 let super_spectre = skeleton.to_spectre_cluster(bbox);
                 *self = super_spectre.into();
             }
+        }
+    }
+
+    pub fn coordinate(&self, anchor: Anchor) -> HexVec {
+        match self {
+            SpectreLike::Spectre(spectre) => spectre.coordinate(anchor),
+            SpectreLike::Cluster(super_spectre) => super_spectre.coordinate(anchor),
+            SpectreLike::Skeleton(skeleton) => skeleton.coordinate(anchor),
+        }
+    }
+
+    pub fn edge_direction_from(&self, anchor: Anchor) -> Angle {
+        match self {
+            SpectreLike::Spectre(spectre) => spectre.edge_direction_from(anchor),
+            SpectreLike::Cluster(super_spectre) => super_spectre.edge_direction_from(anchor),
+            SpectreLike::Skeleton(skeleton) => skeleton.edge_direction_from(anchor),
+        }
+    }
+
+    pub fn edge_direction_into(&self, anchor: Anchor) -> Angle {
+        match self {
+            SpectreLike::Spectre(spectre) => spectre.edge_direction_into(anchor),
+            SpectreLike::Cluster(super_spectre) => super_spectre.edge_direction_into(anchor),
+            SpectreLike::Skeleton(skeleton) => skeleton.edge_direction_into(anchor),
+        }
+    }
+
+    pub fn bbox(&self) -> Aabb {
+        match self {
+            SpectreLike::Spectre(spectre) => spectre.bbox(),
+            SpectreLike::Cluster(super_spectre) => super_spectre.bbox(),
+            SpectreLike::Skeleton(skeleton) => skeleton.bbox(),
+        }
+    }
+
+    pub fn level(&self) -> usize {
+        match self {
+            SpectreLike::Spectre(_) => 0,
+            SpectreLike::Cluster(cluster) => cluster.level(),
+            SpectreLike::Skeleton(skeleton) => skeleton.level(),
         }
     }
 }

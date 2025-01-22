@@ -4,7 +4,7 @@ use bevy::{
     render::{mesh::PrimitiveTopology, view::NoFrustumCulling},
     window::PrimaryWindow,
 };
-use geometry::{Anchor, Geometry as _, Spectre};
+use geometry::{Anchor, Spectre};
 use instancing::{InstanceData, InstanceMaterialData};
 use lyon_tessellation::{
     geom::Point, geometry_builder::simple_builder, path::Path, FillOptions, FillTessellator,
@@ -59,7 +59,7 @@ fn to_instance_data(spectre: &Spectre) -> InstanceData {
     let anchor_pos = spectre.coordinate(Anchor::Anchor1).to_vec2();
     InstanceData {
         position: anchor_pos.extend(0.0),
-        angle: spectre.rotation.to_radians(),
+        angle: spectre.rotation().to_radians(),
     }
 }
 

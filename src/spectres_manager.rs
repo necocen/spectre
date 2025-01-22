@@ -19,7 +19,7 @@ impl SpectresManager {
     }
 
     pub fn expand(&mut self) {
-        if self.spectres.level > 18 {
+        if self.spectres.level() > 18 {
             tracing::warn!("Cannot expand more");
             return;
         }
@@ -30,7 +30,7 @@ impl SpectresManager {
                 .to_spectre_cluster(&Aabb::NULL),
         );
         std::mem::swap(&mut self.spectres, &mut spectres);
-        if spectres.level % 2 == 0 {
+        if spectres.level() % 2 == 0 {
             tracing::info!("Expand from A");
             self.spectres = Box::new(SpectreCluster::with_child_a(*spectres));
         } else {
