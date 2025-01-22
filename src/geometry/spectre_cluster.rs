@@ -4,7 +4,7 @@ use crate::{
 };
 
 use super::{
-    Anchor, MysticCluster, MysticLike, SpectreIter, SpectreLike, MIN_PARTIAL_SUPER_SPECTRE_LEVEL,
+    Anchor, MysticCluster, MysticLike, SpectreIter, SpectreLike, MIN_PARTIAL_CLUSTER_LEVEL,
 };
 
 pub struct SpectreCluster {
@@ -217,7 +217,7 @@ impl SpectreCluster {
     }
 
     pub fn update(&mut self, bbox: &Aabb) {
-        if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL {
+        if self.level < MIN_PARTIAL_CLUSTER_LEVEL {
             return;
         }
         self.a.update(bbox);

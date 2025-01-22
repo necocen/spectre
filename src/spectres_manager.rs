@@ -24,7 +24,7 @@ impl SpectresManager {
             return;
         }
 
-        // 現在のSuperSpectreをAまたはFとして上位のSuperSpectreを生成する
+        // 現在のSpectreClusterをAまたはFとして上位のSpectreClusterを生成する
         let mut spectres = Box::new(
             Skeleton::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO, 1)
                 .to_spectre_cluster(&Aabb::NULL),

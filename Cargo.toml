@@ -19,7 +19,7 @@ wasm-bindgen = "0.2.100"
 criterion = { version = "0.5", features = ["html_reports"] }
 
 [[bench]]
-name = "super_spectre_bench"
+name = "spectre_cluster_bench"
 harness = false
 
 [profile.release-wasm]

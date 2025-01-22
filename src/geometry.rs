@@ -18,5 +18,5 @@ pub use spectre_cluster::SpectreCluster;
 pub use spectre_iter::SpectreIter;
 pub use spectre_like::SpectreLike;
 
-/// これより細かいSuperSpectreは必ずまとめてロードする
-const MIN_PARTIAL_SUPER_SPECTRE_LEVEL: usize = 4;
+/// これより細かいClusterは必ずまとめてロードする
+const MIN_PARTIAL_CLUSTER_LEVEL: usize = 4;

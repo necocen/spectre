@@ -3,7 +3,7 @@ use crate::{
     utils::{Aabb, Angle, HexVec},
 };
 
-use super::{Anchor, SpectreCluster, MIN_PARTIAL_SUPER_SPECTRE_LEVEL};
+use super::{Anchor, SpectreCluster, MIN_PARTIAL_CLUSTER_LEVEL};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Skeleton {
@@ -127,7 +127,7 @@ impl Skeleton {
         // 新しいSpectreの角度を計算
         // levelによって頂点を合わせる場合に接合する辺の選びかたが変わる
         let angle = if self.level % 2 == 1 {
-            // 奇数番目のlevelでは新しいSuperSpectreを辺が密着するまで時計回りに回転させる
+            // 奇数番目のlevelでは新しいSpectreClusterを辺が密着するまで時計回りに回転させる
             self.edge_direction_into(from_anchor).opposite()
         } else {
             // 偶数番目のlevelでは反時計回りに回転させる
@@ -170,8 +170,8 @@ impl Skeleton {
     }
 
     pub fn to_spectre_cluster(&self, bbox: &Aabb) -> SpectreCluster {
-        if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL {
-            // 小さいlevelのSkeletonはそのままSuperSpectreに変換
+        if self.level < MIN_PARTIAL_CLUSTER_LEVEL {
+            // 小さいlevelのSkeletonはそのままClusterに変換
             return SpectreCluster::with_anchor(
                 Anchor::Anchor1,
                 self.anchor1,
@@ -340,7 +340,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_skeleton_and_super_spectre_equivalence() {
+    fn test_skeleton_and_spectre_cluster_equivalence() {
         let test_cases = [
             // Test with different angles (0, 2, 4, 6 corresponding to 0, π/3, 2π/3, π)
             (1, HexVec::ZERO, Anchor::Anchor1, Angle::new(0)),

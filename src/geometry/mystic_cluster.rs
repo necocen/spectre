@@ -3,7 +3,7 @@ use crate::{
     utils::{Aabb, Angle, HexVec},
 };
 
-use super::{Anchor, MysticLike, SpectreLike, MIN_PARTIAL_SUPER_SPECTRE_LEVEL};
+use super::{Anchor, MysticLike, SpectreLike, MIN_PARTIAL_CLUSTER_LEVEL};
 
 pub struct MysticCluster {
     a: Box<SpectreLike>,
@@ -60,7 +60,7 @@ impl MysticCluster {
     }
 
     pub fn update(&mut self, bbox: &Aabb) {
-        if self.level < MIN_PARTIAL_SUPER_SPECTRE_LEVEL {
+        if self.level < MIN_PARTIAL_CLUSTER_LEVEL {
             return;
         }
         self.a.update(bbox);

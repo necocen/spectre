@@ -32,8 +32,8 @@ impl SpectreLike {
             SpectreLike::Spectre(spectre) => {
                 SpectreLike::Spectre(spectre.connected_spectre(from_anchor, to_anchor))
             }
-            SpectreLike::Cluster(super_spectre) => {
-                SpectreLike::Cluster(super_spectre.connected_cluster(from_anchor, to_anchor))
+            SpectreLike::Cluster(cluster) => {
+                SpectreLike::Cluster(cluster.connected_cluster(from_anchor, to_anchor))
             }
             SpectreLike::Skeleton(skeleton) => {
                 SpectreLike::Skeleton(skeleton.connected_skeleton(from_anchor, to_anchor))
@@ -57,15 +57,15 @@ impl SpectreLike {
                     cluster.update(bbox);
                     return;
                 }
-                // super_spectreをskeletonにする
+                // spectre_#lusterをskeletonにする
                 *self = SpectreLike::Skeleton(cluster.skeleton());
             }
             SpectreLike::Skeleton(skeleton) => {
                 if !skeleton.bbox().has_intersection(bbox) {
                     return;
                 }
-                let super_spectre = skeleton.to_spectre_cluster(bbox);
-                *self = super_spectre.into();
+                let cluster = skeleton.to_spectre_cluster(bbox);
+                *self = cluster.into();
             }
         }
     }

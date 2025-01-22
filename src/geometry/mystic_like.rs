@@ -17,15 +17,15 @@ impl MysticLike {
                     cluster.update(bbox);
                     return;
                 }
-                // super_mysticをskeletonにする
+                // mystic_clusterをskeletonにする
                 *self = MysticLike::Skeleton(cluster.skeleton())
             }
             MysticLike::Skeleton(skeleton) => {
                 if !skeleton.bbox().has_intersection(bbox) {
                     return;
                 }
-                let super_mystic = skeleton.to_spectre_cluster(bbox).into_mystic_cluster();
-                *self = super_mystic.into();
+                let cluster = skeleton.to_spectre_cluster(bbox).into_mystic_cluster();
+                *self = cluster.into();
             }
         }
     }
