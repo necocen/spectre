@@ -1,16 +1,22 @@
 mod anchor;
-mod cluster;
+mod mystic;
+mod mystic_cluster;
+mod mystic_like;
 mod skeleton;
 mod spectre;
+mod spectre_cluster;
 mod spectre_iter;
 mod spectre_like;
 
 pub use anchor::Anchor;
-pub use cluster::{MysticCluster, SpectreCluster};
+pub use mystic::Mystic;
+pub use mystic_cluster::MysticCluster;
+pub use mystic_like::MysticLike;
 pub use skeleton::Skeleton;
-pub use spectre::{Mystic, Spectre};
+pub use spectre::Spectre;
+pub use spectre_cluster::SpectreCluster;
 pub use spectre_iter::{SpectreContainer, SpectreIter};
-pub use spectre_like::{MysticLike, SpectreLike};
+pub use spectre_like::SpectreLike;
 
 use crate::utils::{Angle, HexVec};
 
