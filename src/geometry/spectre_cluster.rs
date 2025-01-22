@@ -8,14 +8,14 @@ use super::{
 };
 
 pub struct SpectreCluster {
-    a: Box<SpectreLike>,
-    b: Box<SpectreLike>,
-    c: Box<SpectreLike>,
-    d: Box<SpectreLike>,
-    e: Box<SpectreLike>,
-    f: Box<SpectreLike>,
-    g: Box<SpectreLike>,
-    h: Box<MysticLike>,
+    pub(super) a: Box<SpectreLike>,
+    pub(super) b: Box<SpectreLike>,
+    pub(super) c: Box<SpectreLike>,
+    pub(super) d: Box<SpectreLike>,
+    pub(super) e: Box<SpectreLike>,
+    pub(super) f: Box<SpectreLike>,
+    pub(super) g: Box<SpectreLike>,
+    pub(super) h: Box<MysticLike>,
     level: usize,
     bbox: Aabb,
 }
@@ -277,22 +277,5 @@ impl SpectreCluster {
 
     pub fn level(&self) -> usize {
         self.level
-    }
-
-    pub fn get_spectre_like(&self, index: usize) -> &SpectreLike {
-        match index {
-            0 => &self.a,
-            1 => &self.b,
-            2 => &self.c,
-            3 => &self.d,
-            4 => &self.e,
-            5 => &self.f,
-            6 => &self.g,
-            _ => panic!("unexpected index"),
-        }
-    }
-
-    pub fn get_mystic_like(&self) -> &MysticLike {
-        &self.h
     }
 }
