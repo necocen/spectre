@@ -123,17 +123,6 @@ impl Mul<i32> for HexVec {
     }
 }
 
-impl From<bevy::math::Vec2> for HexVec {
-    fn from(v: bevy::math::Vec2) -> Self {
-        // 注意: これは近似的な変換です
-        // 実際の使用時は直接HexVecを構築することを推奨
-        Self {
-            x: HexValue::new((v.x * 2.0) as i32, 0),
-            y: HexValue::new((v.y * 2.0) as i32, 0),
-        }
-    }
-}
-
 impl std::fmt::Display for HexVec {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
