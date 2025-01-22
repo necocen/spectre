@@ -26,9 +26,7 @@ impl SpectreLike {
     pub fn into_mystic_like(self) -> MysticLike {
         match self {
             SpectreLike::Spectre(spectre) => MysticLike::Mystic(spectre.into_mystic()),
-            SpectreLike::Cluster(super_spectre) => {
-                MysticLike::Cluster(super_spectre.into_mystic_cluster())
-            }
+            SpectreLike::Cluster(cluster) => MysticLike::Cluster(cluster.into_mystic_cluster()),
             SpectreLike::Skeleton(skeleton) => MysticLike::Skeleton(skeleton),
         }
     }
@@ -57,7 +55,7 @@ impl SpectreLike {
     pub fn coordinate(&self, anchor: Anchor) -> HexVec {
         match self {
             SpectreLike::Spectre(spectre) => spectre.coordinate(anchor),
-            SpectreLike::Cluster(super_spectre) => super_spectre.coordinate(anchor),
+            SpectreLike::Cluster(cluster) => cluster.coordinate(anchor),
             SpectreLike::Skeleton(skeleton) => skeleton.coordinate(anchor),
         }
     }
@@ -65,7 +63,7 @@ impl SpectreLike {
     pub fn edge_direction_from(&self, anchor: Anchor) -> Angle {
         match self {
             SpectreLike::Spectre(spectre) => spectre.edge_direction_from(anchor),
-            SpectreLike::Cluster(super_spectre) => super_spectre.edge_direction_from(anchor),
+            SpectreLike::Cluster(cluster) => cluster.edge_direction_from(anchor),
             SpectreLike::Skeleton(skeleton) => skeleton.edge_direction_from(anchor),
         }
     }
@@ -73,7 +71,7 @@ impl SpectreLike {
     pub fn edge_direction_into(&self, anchor: Anchor) -> Angle {
         match self {
             SpectreLike::Spectre(spectre) => spectre.edge_direction_into(anchor),
-            SpectreLike::Cluster(super_spectre) => super_spectre.edge_direction_into(anchor),
+            SpectreLike::Cluster(cluster) => cluster.edge_direction_into(anchor),
             SpectreLike::Skeleton(skeleton) => skeleton.edge_direction_into(anchor),
         }
     }
@@ -81,7 +79,7 @@ impl SpectreLike {
     pub fn bbox(&self) -> Aabb {
         match self {
             SpectreLike::Spectre(spectre) => spectre.bbox(),
-            SpectreLike::Cluster(super_spectre) => super_spectre.bbox(),
+            SpectreLike::Cluster(cluster) => cluster.bbox(),
             SpectreLike::Skeleton(skeleton) => skeleton.bbox(),
         }
     }
@@ -102,8 +100,8 @@ impl From<Spectre> for SpectreLike {
 }
 
 impl From<SpectreCluster> for SpectreLike {
-    fn from(super_spectre: SpectreCluster) -> Self {
-        SpectreLike::Cluster(super_spectre)
+    fn from(cluster: SpectreCluster) -> Self {
+        SpectreLike::Cluster(cluster)
     }
 }
 

@@ -70,8 +70,8 @@ impl From<Mystic> for MysticLike {
 }
 
 impl From<MysticCluster> for MysticLike {
-    fn from(super_mystic: MysticCluster) -> Self {
-        MysticLike::Cluster(super_mystic)
+    fn from(cluster: MysticCluster) -> Self {
+        MysticLike::Cluster(cluster)
     }
 }
 
