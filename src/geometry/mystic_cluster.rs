@@ -3,7 +3,7 @@ use crate::{
     utils::{Aabb, Angle, HexVec},
 };
 
-use super::{Anchor, MysticLike, SpectreContainer, SpectreLike, MIN_PARTIAL_SUPER_SPECTRE_LEVEL};
+use super::{Anchor, MysticLike, SpectreLike, MIN_PARTIAL_SUPER_SPECTRE_LEVEL};
 
 pub struct MysticCluster {
     a: Box<SpectreLike>,
@@ -111,30 +111,24 @@ impl MysticCluster {
     pub fn bbox(&self) -> Aabb {
         self.bbox
     }
-}
 
-impl SpectreContainer for MysticCluster {
-    fn get_spectre(&self, index: usize) -> Option<&SpectreLike> {
+    pub fn level(&self) -> usize {
+        self.level
+    }
+
+    pub fn get_spectre_like(&self, index: usize) -> &SpectreLike {
         match index {
-            0 => Some(&self.a),
-            1 => Some(&self.b),
-            2 => Some(&self.c),
-            3 => Some(&self.d),
-            4 => Some(&self.f),
-            5 => Some(&self.g),
-            _ => None,
+            0 => &self.a,
+            1 => &self.b,
+            2 => &self.c,
+            3 => &self.d,
+            4 => &self.f,
+            5 => &self.g,
+            _ => panic!("unexpected index"),
         }
     }
 
-    fn get_mystic(&self) -> Option<&MysticLike> {
-        Some(&self.h)
-    }
-
-    fn max_index(&self) -> usize {
-        6
-    }
-
-    fn level(&self) -> usize {
-        self.level
+    pub fn get_mystic_like(&self) -> &MysticLike {
+        &self.h
     }
 }

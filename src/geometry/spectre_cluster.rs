@@ -4,7 +4,7 @@ use crate::{
 };
 
 use super::{
-    Anchor, MysticCluster, MysticLike, Spectre, SpectreContainer, SpectreIter, SpectreLike,
+    Anchor, MysticCluster, MysticLike, Spectre, SpectreIter, SpectreLike,
     MIN_PARTIAL_SUPER_SPECTRE_LEVEL,
 };
 
@@ -328,31 +328,21 @@ impl SpectreCluster {
     pub fn level(&self) -> usize {
         self.level
     }
-}
 
-impl SpectreContainer for SpectreCluster {
-    fn get_spectre(&self, index: usize) -> Option<&SpectreLike> {
+    pub fn get_spectre_like(&self, index: usize) -> &SpectreLike {
         match index {
-            0 => Some(&self.a),
-            1 => Some(&self.b),
-            2 => Some(&self.c),
-            3 => Some(&self.d),
-            4 => Some(&self.e),
-            5 => Some(&self.f),
-            6 => Some(&self.g),
-            _ => None,
+            0 => &self.a,
+            1 => &self.b,
+            2 => &self.c,
+            3 => &self.d,
+            4 => &self.e,
+            5 => &self.f,
+            6 => &self.g,
+            _ => panic!("unexpected index"),
         }
     }
 
-    fn get_mystic(&self) -> Option<&MysticLike> {
-        Some(&self.h)
-    }
-
-    fn max_index(&self) -> usize {
-        7
-    }
-
-    fn level(&self) -> usize {
-        self.level
+    pub fn get_mystic_like(&self) -> &MysticLike {
+        &self.h
     }
 }

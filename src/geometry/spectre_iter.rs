@@ -1,24 +1,88 @@
 use crate::utils::Aabb;
 
-use super::{MysticLike, Spectre, SpectreLike};
+use super::{Mystic, MysticCluster, MysticLike, Spectre, SpectreCluster, SpectreLike};
 
-pub trait SpectreContainer {
-    fn get_spectre(&self, index: usize) -> Option<&SpectreLike>;
-    fn get_mystic(&self) -> Option<&MysticLike>;
-    fn max_index(&self) -> usize;
-    fn level(&self) -> usize;
+#[derive(Clone)]
+enum Node<'a> {
+    SpectreCluster(&'a SpectreCluster),
+    MysticCluster(&'a MysticCluster),
+    Spectre(&'a Spectre),
+    Mystic(&'a Mystic),
+}
+
+impl<'a> Node<'a> {
+    fn get_child(&self, index: usize) -> Option<Node<'a>> {
+        match self {
+            Node::SpectreCluster(cluster) => match index {
+                0..=6 => match cluster.get_spectre_like(index) {
+                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
+                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
+                    SpectreLike::Skeleton(_) => None,
+                },
+                7 => match cluster.get_mystic_like() {
+                    MysticLike::Mystic(mystic) => Some(Node::Mystic(mystic)),
+                    MysticLike::Cluster(cluster) => Some(Node::MysticCluster(cluster)),
+                    MysticLike::Skeleton(_) => None,
+                },
+                _ => None,
+            },
+            Node::MysticCluster(cluster) => match index {
+                0..=5 => match cluster.get_spectre_like(index) {
+                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
+                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
+                    SpectreLike::Skeleton(_) => None,
+                },
+                6 => match cluster.get_mystic_like() {
+                    MysticLike::Mystic(mystic) => Some(Node::Mystic(mystic)),
+                    MysticLike::Cluster(cluster) => Some(Node::MysticCluster(cluster)),
+                    MysticLike::Skeleton(_) => None,
+                },
+                _ => None,
+            },
+            Node::Spectre(_) => None,
+            Node::Mystic(mystic) => match index {
+                0 => Some(Node::Spectre(mystic.lower())),
+                1 => Some(Node::Spectre(mystic.upper())),
+                _ => None,
+            },
+        }
+    }
+
+    fn num_children(&self) -> usize {
+        match self {
+            Node::SpectreCluster(_) => 8,
+            Node::MysticCluster(_) => 7,
+            Node::Spectre(_) => 0,
+            Node::Mystic(_) => 2,
+        }
+    }
+
+    fn bbox(&self) -> Aabb {
+        match self {
+            Node::SpectreCluster(cluster) => cluster.bbox(),
+            Node::MysticCluster(cluster) => cluster.bbox(),
+            Node::Spectre(spectre) => spectre.bbox(),
+            Node::Mystic(mystic) => mystic.bbox(),
+        }
+    }
+}
+
+impl<'a> From<&'a SpectreCluster> for Node<'a> {
+    fn from(cluster: &'a SpectreCluster) -> Self {
+        Node::SpectreCluster(cluster)
+    }
 }
 
 #[derive(Clone)]
 pub struct SpectreIter<'a> {
-    parents: Vec<(&'a dyn SpectreContainer, usize)>,
+    parents: Vec<(Node<'a>, usize)>,
     bbox: Aabb,
 }
 
 impl<'a> SpectreIter<'a> {
-    pub fn new(root: &'a dyn SpectreContainer, bbox: Aabb) -> SpectreIter<'a> {
+    pub fn new(root: &'a SpectreCluster, bbox: Aabb) -> SpectreIter<'a> {
         SpectreIter {
-            parents: vec![(root, 0)],
+            parents: vec![(root.into(), 0)],
             bbox,
         }
     }
@@ -28,55 +92,17 @@ impl<'a> Iterator for SpectreIter<'a> {
     type Item = &'a Spectre;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some((parent, index)) = self.parents.pop() {
-            if parent.level() == 1 {
-                // abcdefgを辿る
-                for i in index..parent.max_index() {
-                    if let Some(SpectreLike::Spectre(spectre)) = parent.get_spectre(i) {
-                        if !spectre.bbox().has_intersection(&self.bbox) {
-                            continue;
-                        }
-                        self.parents.push((parent, i + 1));
-                        return Some(spectre);
-                    }
-                }
-
-                // hを辿る
-                if let Some(MysticLike::Mystic(mystic)) = parent.get_mystic() {
-                    if mystic.bbox().has_intersection(&self.bbox) {
-                        if index <= parent.max_index() {
-                            // Mysticのaを判定する
-                            if mystic.lower().bbox().has_intersection(&self.bbox) {
-                                self.parents.push((parent, parent.max_index() + 1));
-                                return Some(mystic.lower());
-                            }
-                        }
-                        // Mysticのbを判定する
-                        if mystic.upper().bbox().has_intersection(&self.bbox) {
-                            // 最後なのでparentsに追加しない
-                            return Some(mystic.upper());
-                        }
-                    }
-                }
-            } else {
-                // SuperSpectreを辿る
-                for i in index..parent.max_index() {
-                    if let Some(SpectreLike::Cluster(super_spectre)) = parent.get_spectre(i) {
-                        if !super_spectre.bbox().has_intersection(&self.bbox) {
-                            continue;
-                        }
-                        self.parents.push((parent, i + 1));
-                        self.parents.push((super_spectre, 0));
-                        return self.next();
-                    }
-                }
-                // SuperMysticを辿る
-                if index <= parent.max_index() {
-                    if let Some(MysticLike::Cluster(super_mystic)) = parent.get_mystic() {
-                        if super_mystic.bbox().has_intersection(&self.bbox) {
-                            self.parents.push((parent, parent.max_index() + 1));
-                            self.parents.push((super_mystic, 0));
-                            return self.next();
+        'outer: while let Some((parent, index)) = self.parents.pop() {
+            for i in index..parent.num_children() {
+                if let Some(child) = parent.get_child(i) {
+                    if child.bbox().has_intersection(&self.bbox) {
+                        if let Node::Spectre(spectre) = child {
+                            self.parents.push((parent, i + 1));
+                            return Some(spectre);
+                        } else {
+                            self.parents.push((parent, i + 1));
+                            self.parents.push((child, 0));
+                            continue 'outer;
                         }
                     }
                 }

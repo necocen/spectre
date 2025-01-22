@@ -15,7 +15,7 @@ pub use mystic_like::MysticLike;
 pub use skeleton::Skeleton;
 pub use spectre::Spectre;
 pub use spectre_cluster::SpectreCluster;
-pub use spectre_iter::{SpectreContainer, SpectreIter};
+pub use spectre_iter::SpectreIter;
 pub use spectre_like::SpectreLike;
 
 /// これより細かいSuperSpectreは必ずまとめてロードする

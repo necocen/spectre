@@ -61,6 +61,14 @@ impl MysticLike {
             MysticLike::Skeleton(skeleton) => skeleton.bbox(),
         }
     }
+
+    pub fn level(&self) -> usize {
+        match self {
+            MysticLike::Mystic(_) => 0,
+            MysticLike::Cluster(cluster) => cluster.level(),
+            MysticLike::Skeleton(skeleton) => skeleton.level(),
+        }
+    }
 }
 
 impl From<Mystic> for MysticLike {
