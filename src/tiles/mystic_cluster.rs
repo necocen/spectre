@@ -1,9 +1,6 @@
-use crate::{
-    geometry::Skeleton,
-    utils::{Aabb, Angle, HexVec},
-};
+use crate::utils::{Aabb, Angle, HexVec};
 
-use super::{Anchor, MysticLike, SpectreLike, MIN_PARTIAL_CLUSTER_LEVEL};
+use super::{Anchor, MysticLike, Skeleton, SpectreLike, MIN_PARTIAL_CLUSTER_LEVEL};
 
 pub struct MysticCluster {
     pub(super) a: Box<SpectreLike>,
@@ -50,7 +47,7 @@ impl MysticCluster {
         }
     }
 
-    pub fn skeleton(&self) -> Skeleton {
+    pub fn to_skeleton(&self) -> Skeleton {
         Skeleton::with_anchor(
             Anchor::Anchor1,
             self.coordinate(Anchor::Anchor1),

@@ -18,7 +18,7 @@ impl MysticLike {
                     return;
                 }
                 // mystic_clusterをskeletonにする
-                *self = MysticLike::Skeleton(cluster.skeleton())
+                *self = MysticLike::Skeleton(cluster.to_skeleton())
             }
             MysticLike::Skeleton(skeleton) => {
                 if !skeleton.bbox().has_intersection(bbox) {

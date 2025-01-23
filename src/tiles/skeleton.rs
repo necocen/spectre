@@ -1,9 +1,6 @@
-use crate::{
-    geometry::{Spectre, SpectreLike},
-    utils::{Aabb, Angle, HexVec},
-};
+use crate::utils::{Aabb, Angle, HexVec};
 
-use super::{Anchor, SpectreCluster, MIN_PARTIAL_CLUSTER_LEVEL};
+use super::{Anchor, Spectre, SpectreCluster, SpectreLike, MIN_PARTIAL_CLUSTER_LEVEL};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Skeleton {

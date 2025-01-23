@@ -1,10 +1,8 @@
-use crate::{
-    geometry::Skeleton,
-    utils::{Aabb, Angle, HexVec},
-};
+use crate::utils::{Aabb, Angle, HexVec};
 
 use super::{
-    Anchor, MysticCluster, MysticLike, SpectreIter, SpectreLike, MIN_PARTIAL_CLUSTER_LEVEL,
+    Anchor, MysticCluster, MysticLike, Skeleton, SpectreIter, SpectreLike,
+    MIN_PARTIAL_CLUSTER_LEVEL,
 };
 
 pub struct SpectreCluster {
@@ -157,7 +155,7 @@ impl SpectreCluster {
 
     pub fn with_child_a(a: SpectreCluster) -> Self {
         let level = a.level() + 1;
-        let a_skeleton = SpectreLike::from(a.skeleton());
+        let a_skeleton = SpectreLike::from(a.to_skeleton());
         let a = SpectreLike::from(a);
         let b = a_skeleton.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
         let c = b.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
@@ -172,7 +170,7 @@ impl SpectreCluster {
 
     pub fn with_child_f(f: SpectreCluster) -> Self {
         let level = f.level() + 1;
-        let f_skeleton = SpectreLike::from(f.skeleton());
+        let f_skeleton = SpectreLike::from(f.to_skeleton());
         let f = SpectreLike::from(f);
         let g = f_skeleton.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
         let h = g.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
@@ -207,7 +205,7 @@ impl SpectreCluster {
         )
     }
 
-    pub fn skeleton(&self) -> Skeleton {
+    pub fn to_skeleton(&self) -> Skeleton {
         Skeleton::with_anchor(
             Anchor::Anchor1,
             self.coordinate(Anchor::Anchor1),

@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use spectre::{
-    geometry::{Anchor, SpectreCluster},
+    tiles::{Anchor, SpectreCluster},
     utils::{Aabb, Angle, HexVec},
 };
 
