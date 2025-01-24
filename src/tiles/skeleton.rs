@@ -40,8 +40,8 @@ impl Skeleton {
                 let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
                 let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
                 let d = c.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                // let e = d.adjacent_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                // let f = e.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+                // let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
+                // let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
                 (g, d, b, a)
             }
             Anchor::Anchor2 => {
@@ -56,7 +56,7 @@ impl Skeleton {
                 let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
                 let a = h.connected_skeleton(Anchor::Anchor1, Anchor::Anchor1);
                 let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                // let c = b.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor2);
+                // let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
                 (g, d, b, a)
             }
             Anchor::Anchor3 => {
@@ -86,7 +86,7 @@ impl Skeleton {
                 let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
                 let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
                 let g = f.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                // let h = g.adjacent_skeleton(Anchor::Anchor4, Anchor::Anchor4);
+                // let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
                 (g, d, b, a)
             }
         };
