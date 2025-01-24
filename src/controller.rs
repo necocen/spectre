@@ -159,6 +159,9 @@ struct TilesController {
 }
 
 impl TilesController {
+    /// クラスターの最大レベル。これ以上拡張しようとすると座標がi32の範囲を超えるため。
+    const MAX_CLUSTER_LEVEL: usize = 18;
+
     pub fn new() -> Self {
         let skeleton = Skeleton::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO, 5, None)
             .to_spectre_cluster(&Aabb::NULL);
@@ -167,7 +170,7 @@ impl TilesController {
     }
 
     pub fn expand(&mut self) {
-        if self.spectres.level() > 18 {
+        if self.spectres.level() > Self::MAX_CLUSTER_LEVEL {
             tracing::warn!("Cannot expand more");
             return;
         }
