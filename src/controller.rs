@@ -160,7 +160,7 @@ struct TilesController {
 
 impl TilesController {
     pub fn new() -> Self {
-        let skeleton = Skeleton::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO, 5)
+        let skeleton = Skeleton::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO, 5, None)
             .to_spectre_cluster(&Aabb::NULL);
         let spectres = Box::new(skeleton);
         Self { spectres }
@@ -174,7 +174,7 @@ impl TilesController {
 
         // 現在のSpectreClusterをAまたはFとして上位のSpectreClusterを生成する
         let mut spectres = Box::new(
-            Skeleton::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO, 1)
+            Skeleton::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO, 1, None)
                 .to_spectre_cluster(&Aabb::NULL),
         );
         std::mem::swap(&mut self.spectres, &mut spectres);

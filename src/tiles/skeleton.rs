@@ -17,6 +17,7 @@ pub struct Skeleton {
     edge_direction_into_anchor4: Angle,
     edge_direction_from_anchor4: Angle,
     level: usize,
+    inherited_bbox: Option<Aabb>,
 }
 
 impl Skeleton {
@@ -25,6 +26,7 @@ impl Skeleton {
         coordinate: impl Into<HexVec>,
         edge_direction: impl Into<Angle>,
         level: usize,
+        inherited_bbox: Option<Aabb>,
     ) -> Self {
         let coordinate = coordinate.into();
         let edge_direction = edge_direction.into();
@@ -33,7 +35,13 @@ impl Skeleton {
                 let g = if level == 1 {
                     Spectre::with_anchor(Anchor::Anchor3, coordinate, edge_direction).into()
                 } else {
-                    Skeleton::with_anchor(Anchor::Anchor3, coordinate, edge_direction, level - 1)
+                    Skeleton::with_anchor(
+                        Anchor::Anchor3,
+                        coordinate,
+                        edge_direction,
+                        level - 1,
+                        None,
+                    )
                 };
                 let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
                 let a = h.connected_skeleton(Anchor::Anchor1, Anchor::Anchor1);
@@ -48,7 +56,13 @@ impl Skeleton {
                 let d = if level == 1 {
                     Spectre::with_anchor(Anchor::Anchor2, coordinate, edge_direction).into()
                 } else {
-                    Skeleton::with_anchor(Anchor::Anchor2, coordinate, edge_direction, level - 1)
+                    Skeleton::with_anchor(
+                        Anchor::Anchor2,
+                        coordinate,
+                        edge_direction,
+                        level - 1,
+                        None,
+                    )
                 };
                 let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
                 let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
@@ -63,7 +77,13 @@ impl Skeleton {
                 let b = if level == 1 {
                     Spectre::with_anchor(Anchor::Anchor3, coordinate, edge_direction).into()
                 } else {
-                    Skeleton::with_anchor(Anchor::Anchor3, coordinate, edge_direction, level - 1)
+                    Skeleton::with_anchor(
+                        Anchor::Anchor3,
+                        coordinate,
+                        edge_direction,
+                        level - 1,
+                        None,
+                    )
                 };
                 let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
                 let d = c.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
@@ -78,7 +98,13 @@ impl Skeleton {
                 let a = if level == 1 {
                     Spectre::with_anchor(Anchor::Anchor2, coordinate, edge_direction).into()
                 } else {
-                    Skeleton::with_anchor(Anchor::Anchor2, coordinate, edge_direction, level - 1)
+                    Skeleton::with_anchor(
+                        Anchor::Anchor2,
+                        coordinate,
+                        edge_direction,
+                        level - 1,
+                        None,
+                    )
                 };
                 let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
                 let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
@@ -117,6 +143,7 @@ impl Skeleton {
             edge_direction_into_anchor4,
             edge_direction_from_anchor4,
             level,
+            inherited_bbox,
         }
     }
 
@@ -162,6 +189,7 @@ impl Skeleton {
         new_skeleton.anchor2 += offset;
         new_skeleton.anchor3 += offset;
         new_skeleton.anchor4 += offset;
+        new_skeleton.inherited_bbox = None;
 
         new_skeleton
     }
@@ -181,7 +209,7 @@ impl Skeleton {
             .split_into_skeletons()
             .into_iter()
             .map(|sub_skeleton| {
-                if sub_skeleton.bbox().has_intersection(bbox) {
+                if sub_skeleton.estimated_bbox().has_intersection(bbox) {
                     SpectreLike::from(sub_skeleton.to_spectre_cluster(bbox))
                 } else {
                     SpectreLike::Skeleton(sub_skeleton)
@@ -237,7 +265,11 @@ impl Skeleton {
         }
     }
 
-    pub fn bbox(&self) -> Aabb {
+    pub fn estimated_bbox(&self) -> Aabb {
+        if let Some(inherited_bbox) = self.inherited_bbox {
+            return inherited_bbox;
+        }
+
         let points = [self.anchor1, self.anchor2, self.anchor3, self.anchor4];
         let mut min_x = f32::INFINITY;
         let mut min_y = f32::INFINITY;
@@ -285,6 +317,7 @@ impl Skeleton {
                 self.anchor4,
                 self.edge_direction_from(Anchor::Anchor4),
                 self.level - 1,
+                None,
             )
         };
         let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
@@ -328,6 +361,7 @@ impl From<Spectre> for Skeleton {
             edge_direction_into_anchor4,
             edge_direction_from_anchor4,
             level,
+            inherited_bbox: Some(spectre.bbox()),
         }
     }
 }
@@ -349,7 +383,7 @@ mod tests {
         ];
 
         for &(level, coordinate, anchor, edge_direction) in &test_cases {
-            let skeleton = Skeleton::with_anchor(anchor, coordinate, edge_direction, level);
+            let skeleton = Skeleton::with_anchor(anchor, coordinate, edge_direction, level, None);
             let cluster = SpectreCluster::with_anchor(anchor, coordinate, edge_direction, level);
 
             for test_anchor in [

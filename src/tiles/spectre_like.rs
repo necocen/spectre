@@ -57,11 +57,11 @@ impl SpectreLike {
                     cluster.update(bbox);
                     return;
                 }
-                // spectre_#lusterをskeletonにする
+                // spectre_clusterをskeletonにする
                 *self = SpectreLike::Skeleton(cluster.to_skeleton());
             }
             SpectreLike::Skeleton(skeleton) => {
-                if !skeleton.bbox().has_intersection(bbox) {
+                if !skeleton.estimated_bbox().has_intersection(bbox) {
                     return;
                 }
                 let cluster = skeleton.to_spectre_cluster(bbox);
@@ -98,7 +98,7 @@ impl SpectreLike {
         match self {
             SpectreLike::Spectre(spectre) => spectre.bbox(),
             SpectreLike::Cluster(cluster) => cluster.bbox(),
-            SpectreLike::Skeleton(skeleton) => skeleton.bbox(),
+            SpectreLike::Skeleton(skeleton) => skeleton.estimated_bbox(),
         }
     }
 

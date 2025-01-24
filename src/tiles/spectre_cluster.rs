@@ -211,6 +211,7 @@ impl SpectreCluster {
             self.coordinate(Anchor::Anchor1),
             self.edge_direction_from(Anchor::Anchor1),
             self.level,
+            Some(self.bbox()),
         )
     }
 

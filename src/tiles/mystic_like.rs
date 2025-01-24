@@ -21,7 +21,7 @@ impl MysticLike {
                 *self = MysticLike::Skeleton(cluster.to_skeleton())
             }
             MysticLike::Skeleton(skeleton) => {
-                if !skeleton.bbox().has_intersection(bbox) {
+                if !skeleton.estimated_bbox().has_intersection(bbox) {
                     return;
                 }
                 let cluster = skeleton.to_spectre_cluster(bbox).into_mystic_cluster();
@@ -58,7 +58,7 @@ impl MysticLike {
         match self {
             MysticLike::Mystic(mystic) => mystic.bbox(),
             MysticLike::Cluster(cluster) => cluster.bbox(),
-            MysticLike::Skeleton(skeleton) => skeleton.bbox(),
+            MysticLike::Skeleton(skeleton) => skeleton.estimated_bbox(),
         }
     }
 
