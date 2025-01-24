@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 
 use super::{Angle, HexValue};
 
@@ -119,6 +119,17 @@ impl Mul<i32> for HexVec {
         Self {
             x: self.x * rhs,
             y: self.y * rhs,
+        }
+    }
+}
+
+impl Div<i32> for HexVec {
+    type Output = Self;
+
+    fn div(self, rhs: i32) -> Self {
+        Self {
+            x: self.x / rhs,
+            y: self.y / rhs,
         }
     }
 }

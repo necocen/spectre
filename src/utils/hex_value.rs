@@ -1,4 +1,4 @@
-use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 
 use super::Angle;
 
@@ -164,6 +164,17 @@ impl Mul<i32> for HexValue {
     }
 }
 
+impl Div<i32> for HexValue {
+    type Output = Self;
+
+    fn div(self, rhs: i32) -> Self {
+        Self {
+            rational: self.rational / rhs,
+            irrational: self.irrational / rhs,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -234,11 +245,15 @@ mod tests {
         // 減算
         assert_eq!(a - b, HexValue::new(-2, -2));
 
-        // 否定
+        // 逆
         assert_eq!(-a, HexValue::new(-1, -2));
 
         // 乗算（スカラー）
         assert_eq!(a * 3, HexValue::new(3, 6));
+
+        // 除算（スカラー）
+        assert_eq!(a / 2, HexValue::new(0, 1));
+        assert_eq!((a + b) / 2, HexValue::new(2, 3));
     }
 
     #[test]

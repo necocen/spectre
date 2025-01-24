@@ -270,25 +270,38 @@ impl Skeleton {
             return inherited_bbox;
         }
 
-        let points = [self.anchor1, self.anchor2, self.anchor3, self.anchor4];
+        let axis2 = self.anchor2 - self.anchor1;
+        let axis4 = self.anchor4 - self.anchor1;
+        let p5 = self.anchor1 + axis2 - axis4 / 2;
+        let p6 = self.anchor1 - axis2 / 2 + axis4 / 4;
+        let p7 = self.anchor1 + axis2 + axis4 / 2;
+
+        let points = [
+            self.anchor1,
+            self.anchor2,
+            self.anchor3,
+            self.anchor4,
+            p5,
+            p6,
+            p7,
+        ];
         let mut min_x = f32::INFINITY;
         let mut min_y = f32::INFINITY;
         let mut max_x = f32::NEG_INFINITY;
         let mut max_y = f32::NEG_INFINITY;
 
-        for p in points.iter() {
-            let x = p.x.to_f32();
-            let y = p.y.to_f32();
-            min_x = min_x.min(x);
-            min_y = min_y.min(y);
-            max_x = max_x.max(x);
-            max_y = max_y.max(y);
+        for p in points {
+            let p = p.to_vec2();
+            min_x = min_x.min(p.x);
+            min_y = min_y.min(p.y);
+            max_x = max_x.max(p.x);
+            max_y = max_y.max(p.y);
         }
 
-        let expanded_min_x = min_x - (max_x - min_x) * 0.5;
-        let expanded_min_y = min_y - (max_y - min_y) * 0.5;
-        let expanded_max_x = max_x + (max_x - min_x) * 0.5;
-        let expanded_max_y = max_y + (max_y - min_y) * 0.5;
+        let expanded_min_x = min_x - (max_x - min_x) * 0.25;
+        let expanded_min_y = min_y - (max_y - min_y) * 0.25;
+        let expanded_max_x = max_x + (max_x - min_x) * 0.25;
+        let expanded_max_y = max_y + (max_y - min_y) * 0.25;
 
         Aabb::new(
             expanded_min_x,
