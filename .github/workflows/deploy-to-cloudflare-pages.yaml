@@ -16,21 +16,12 @@ jobs:
     steps:
       - uses: Kesin11/actions-timeline@v2
       - uses: actions/checkout@v4
-      - run: |
-          rustup target add wasm32-unknown-unknown
-          rustup component add rust-src
+      - run: rustup target add wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
+      - name: Install Trunk
+        run: cargo install trunk
       - name: Build
-        run: |
-          # ビルド時にカスタムプロファイルを使いたいのでwasm-packはlatestが必要
-          cargo install --git https://github.com/rustwasm/wasm-pack.git
-      - run: wasm-pack build --target web --profile release-wasm
-      - name: Gather artifacts
-        run: |
-          mkdir -p dist
-          cp -r pkg dist/
-          cp index.html dist/
-          cp img/ogp.png dist/
+        run: trunk build
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:

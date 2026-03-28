@@ -19,8 +19,8 @@ impl HexVec {
     pub const ZERO: Self = Self::new(HexValue::ZERO, HexValue::ZERO);
 
     /// Vec2に変換
-    pub fn to_vec2(self) -> bevy::math::Vec2 {
-        bevy::math::Vec2::new(self.x.to_f32(), self.y.to_f32())
+    pub fn to_vec2(self) -> glam::Vec2 {
+        glam::Vec2::new(self.x.to_f32(), self.y.to_f32())
     }
 
     /// 点を指定された角度だけ回転する

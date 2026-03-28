@@ -48,3 +48,4 @@ Cargo.lock
 *.pdb
 
 profile.json
+/dist

@@ -1,37 +1,34 @@
-use bevy::{
-    asset::RenderAssetUsages,
-    prelude::*,
-    render::{mesh::PrimitiveTopology, view::NoFrustumCulling},
-    window::PrimaryWindow,
-};
+use glam::Vec2;
 use lyon_tessellation::{
     geom::Point, geometry_builder::simple_builder, path::Path, FillOptions, FillTessellator,
     VertexBuffers,
 };
+use mikage::InstanceVertex;
 
 use crate::{
-    instancing::{InstanceData, InstanceMaterialData},
     tiles::{Anchor, Skeleton, Spectre, SpectreCluster, SpectreIter},
     utils::{Aabb, Angle, HexVec},
 };
 
-pub struct TilesControllerPlugin;
+#[repr(C)]
+#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct SpectreInstance {
+    pub position: [f32; 3],
+    pub angle: f32,
+}
 
-impl Plugin for TilesControllerPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Startup, startup)
-            .init_resource::<LastViewState>()
-            .add_systems(Update, camera_view_system);
+impl InstanceVertex for SpectreInstance {
+    fn vertex_attributes() -> Vec<mikage::wgpu::VertexAttribute> {
+        vec![mikage::wgpu::VertexAttribute {
+            format: mikage::wgpu::VertexFormat::Float32x4,
+            offset: 0,
+            shader_location: 2,
+        }]
     }
 }
 
-fn startup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
-    let mesh = setup_mesh(&mut meshes);
-    commands.spawn((Mesh2d(mesh), InstanceMaterialData(vec![]), NoFrustumCulling));
-    commands.insert_resource(TilesController::new());
-}
-
-fn setup_mesh(meshes: &mut ResMut<Assets<Mesh>>) -> Handle<Mesh> {
+/// Spectreタイルのメッシュを生成する
+pub fn create_spectre_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
     let mut path_builder = Path::builder();
     let points = Spectre::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO).vertices();
     let points_vec2: Vec<Vec2> = points.iter().map(|p| p.to_vec2()).collect();
@@ -50,111 +47,24 @@ fn setup_mesh(meshes: &mut ResMut<Assets<Mesh>>) -> Handle<Mesh> {
             tessellator.tessellate_path(&path, &FillOptions::default(), &mut vertex_builder);
         assert!(result.is_ok());
     }
-    let mut mesh = Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::RENDER_WORLD,
-    );
-    mesh.insert_attribute(
-        Mesh::ATTRIBUTE_POSITION,
-        buffers
-            .vertices
-            .iter()
-            .map(|p| [p.x, p.y, 0.0])
-            .collect::<Vec<_>>(),
-    );
-    mesh.insert_attribute(
-        Mesh::ATTRIBUTE_NORMAL,
-        buffers
-            .vertices
-            .iter()
-            .map(|_| [0.0, 0.0, 1.0])
-            .collect::<Vec<_>>(),
-    );
-    mesh.insert_attribute(
-        Mesh::ATTRIBUTE_UV_0,
-        buffers
-            .vertices
-            .iter()
-            .map(|_| [0.0, 0.0])
-            .collect::<Vec<_>>(),
-    );
-    mesh.insert_indices(bevy::render::mesh::Indices::U16(buffers.indices));
-    meshes.add(mesh)
-}
 
-fn camera_view_system(
-    mut manager: ResMut<TilesController>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-    ortho_q: Query<(&OrthographicProjection, &GlobalTransform), With<Camera2d>>,
-    mut entity_query: Query<&mut InstanceMaterialData>,
-    mut last_view: ResMut<LastViewState>,
-) {
-    let window = windows.single();
-    let (ortho, transform) = ortho_q.get_single().unwrap();
+    let positions: Vec<[f32; 3]> = buffers.vertices.iter().map(|p| [p.x, p.y, 0.0]).collect();
+    let normals: Vec<[f32; 3]> = buffers.vertices.iter().map(|_| [0.0, 0.0, 1.0]).collect();
+    let indices: Vec<u32> = buffers.indices.iter().map(|&i| i as u32).collect();
 
-    // カメラの中心（ワールド座標）
-    let camera_center = transform.translation().truncate();
-
-    // スケールを考慮して、ウィンドウサイズからbboxを求める
-    // あまり小さいとタイル表示数のゆらぎが大きくなって拡張判定に失敗するので、ある程度の大きさを最小値として設定する
-    const MIN_SIZE: f32 = 15.0;
-    let half_width = f32::max(
-        window.width() * 0.5 * transform.scale().x * ortho.scale * 1.5,
-        MIN_SIZE,
-    );
-    let half_height = f32::max(
-        window.height() * 0.5 * transform.scale().y * ortho.scale * 1.5,
-        MIN_SIZE,
-    );
-    let min = camera_center - Vec2::new(half_width, half_height);
-    let max = camera_center + Vec2::new(half_width, half_height);
-    let bbox = Aabb::from_min_max(min, max);
-
-    // 前フレームと同じbboxの場合は早期リターン
-    if let Some(last_bbox) = last_view.bbox {
-        if last_bbox == bbox && !last_view.expanded {
-            return;
-        }
-    }
-    last_view.bbox = Some(bbox);
-
-    // bboxに含まれるタイルを取得してバッファを更新
-    let mut instance_data = Vec::<InstanceData>::with_capacity(
-        (entity_query.single().0.len() as f64 * 1.1).ceil() as usize,
-    );
-    manager.update(&bbox);
-    let spectres = manager.spectres_in(&bbox);
-    instance_data.extend(spectres.map(to_instance_data));
-    entity_query.single_mut().0 = instance_data;
-
-    // 描画対象タイルの重心の偏りによってタイル生成の要否を判定する
-    // （欠けがある場合はその分だけ重心が偏るという考えかた）
-    // FIXME: update_childrenの精度が高くないので、本当はタイルが存在するのに生成してしまうパターンがある
-    let instance_data = &entity_query.single().0;
-    last_view.expanded = false;
-    if !instance_data.is_empty() {
-        let center = (bbox.min + bbox.max) * 0.5;
-        let barycenter = instance_data.iter().fold(Vec2::ZERO, |acc, data| {
-            acc + (data.position.truncate() - center)
-        }) / instance_data.len() as f32;
-        if barycenter.length() > 5.0 {
-            manager.expand();
-            last_view.expanded = true;
-        }
-    }
+    (positions, normals, indices)
 }
 
 #[inline]
-fn to_instance_data(spectre: &Spectre) -> InstanceData {
+fn to_instance(spectre: &Spectre) -> SpectreInstance {
     let anchor_pos = spectre.coordinate(Anchor::Anchor1).to_vec2();
-    InstanceData {
-        position: anchor_pos.extend(0.0),
+    SpectreInstance {
+        position: [anchor_pos.x, anchor_pos.y, 0.0],
         angle: spectre.rotation().to_radians(),
     }
 }
 
-#[derive(Resource)]
-struct TilesController {
+pub struct TilesController {
     spectres: Box<SpectreCluster>,
 }
 
@@ -181,7 +91,7 @@ impl TilesController {
                 .to_spectre_cluster(&Aabb::NULL),
         );
         std::mem::swap(&mut self.spectres, &mut spectres);
-        if spectres.level() % 2 == 0 {
+        if spectres.level().is_multiple_of(2) {
             tracing::info!("Expand from A");
             self.spectres = Box::new(SpectreCluster::with_child_a(*spectres));
         } else {
@@ -194,15 +104,51 @@ impl TilesController {
         self.spectres.update(bbox);
     }
 
-    pub fn spectres_in(&self, bbox: &Aabb) -> SpectreIter {
+    pub fn spectres_in(&self, bbox: &Aabb) -> SpectreIter<'_> {
         self.spectres.spectres_in(*bbox)
     }
 }
 
-#[derive(Resource, Default)]
-struct LastViewState {
+#[derive(Default)]
+pub struct LastViewState {
     /// カメラの表示範囲
-    bbox: Option<Aabb>,
+    pub bbox: Option<Aabb>,
     /// 前のフレームでタイルを拡大したかどうか
-    expanded: bool,
+    pub expanded: bool,
+}
+
+/// カメラのビューに基づいてタイルの表示を更新する。
+/// bboxに変更がない場合はNoneを返す。
+pub fn update_tiles(
+    controller: &mut TilesController,
+    last_view: &mut LastViewState,
+    bbox: &Aabb,
+) -> Option<Vec<SpectreInstance>> {
+    // 前フレームと同じbboxの場合は早期リターン
+    if let Some(last_bbox) = last_view.bbox {
+        if last_bbox == *bbox && !last_view.expanded {
+            return None;
+        }
+    }
+    last_view.bbox = Some(*bbox);
+
+    // bboxに含まれるタイルを取得してインスタンスデータを生成
+    controller.update(bbox);
+    let spectres = controller.spectres_in(bbox);
+    let instance_data: Vec<SpectreInstance> = spectres.map(to_instance).collect();
+
+    // 描画対象タイルの重心の偏りによってタイル生成の要否を判定する
+    last_view.expanded = false;
+    if !instance_data.is_empty() {
+        let center = (bbox.min + bbox.max) * 0.5;
+        let barycenter = instance_data.iter().fold(Vec2::ZERO, |acc, data| {
+            acc + (Vec2::new(data.position[0], data.position[1]) - center)
+        }) / instance_data.len() as f32;
+        if barycenter.length() > 5.0 {
+            controller.expand();
+            last_view.expanded = true;
+        }
+    }
+
+    Some(instance_data)
 }
