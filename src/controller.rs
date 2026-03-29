@@ -107,6 +107,10 @@ impl TilesController {
     pub fn spectres_in(&self, bbox: &Aabb) -> SpectreIter<'_> {
         self.spectres.spectres_in(*bbox)
     }
+
+    pub fn cluster_bbox(&self) -> Aabb {
+        self.spectres.bbox()
+    }
 }
 
 #[derive(Default)]
@@ -138,14 +142,31 @@ pub fn update_tiles(
     let spectres = controller.spectres_in(bbox);
     let instance_data: Vec<SpectreInstance> = spectres.map(to_instance).collect();
 
-    // 描画対象タイルの重心の偏りによってタイル生成の要否を判定する
+    // expand判定
     last_view.expanded = false;
-    if !instance_data.is_empty() {
+    let cluster_bbox = controller.cluster_bbox();
+
+    // A: クラスタのbboxがビューポートを余裕を持って包含していなければexpand
+    // パン時に欠けが見えないよう、ビューポートの50%分のマージンを確保
+    let margin = (bbox.max - bbox.min) * 0.5;
+    let viewport_outside = (bbox.min.x - margin.x) < cluster_bbox.min.x
+        || (bbox.min.y - margin.y) < cluster_bbox.min.y
+        || (bbox.max.x + margin.x) > cluster_bbox.max.x
+        || (bbox.max.y + margin.y) > cluster_bbox.max.y;
+
+    if viewport_outside {
+        controller.expand();
+        last_view.expanded = true;
+    } else if !instance_data.is_empty() {
+        // B: クラスタbbox内でも形状の凹みでタイルが欠けている場合のフォールバック
+        // 固定閾値と相対閾値の小さい方を使用（大画面/ズームアウト時にも敏感に反応）
         let center = (bbox.min + bbox.max) * 0.5;
         let barycenter = instance_data.iter().fold(Vec2::ZERO, |acc, data| {
             acc + (Vec2::new(data.position[0], data.position[1]) - center)
         }) / instance_data.len() as f32;
-        if barycenter.length() > 5.0 {
+        let viewport_diagonal = (bbox.max - bbox.min).length();
+        let threshold = f32::min(5.0, viewport_diagonal * 0.03);
+        if barycenter.length() > threshold {
             controller.expand();
             last_view.expanded = true;
         }
