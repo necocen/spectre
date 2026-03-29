@@ -149,16 +149,16 @@ impl<'a> Iterator for SpectreIter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         'outer: while let Some((parent, index)) = self.parents.pop() {
             for i in index..parent.num_children() {
-                if let Some(child) = parent.get_child(i) {
-                    if child.bbox().has_intersection(&self.bbox) {
-                        if let Node::Spectre(spectre) = child {
-                            self.parents.push((parent, i + 1));
-                            return Some(spectre);
-                        } else {
-                            self.parents.push((parent, i + 1));
-                            self.parents.push((child, 0));
-                            continue 'outer;
-                        }
+                if let Some(child) = parent.get_child(i)
+                    && child.bbox().has_intersection(&self.bbox)
+                {
+                    if let Node::Spectre(spectre) = child {
+                        self.parents.push((parent, i + 1));
+                        return Some(spectre);
+                    } else {
+                        self.parents.push((parent, i + 1));
+                        self.parents.push((child, 0));
+                        continue 'outer;
                     }
                 }
             }

@@ -125,10 +125,11 @@ pub fn update_tiles(
     bbox: &Aabb,
 ) -> Option<Vec<SpectreInstance>> {
     // 前フレームと同じbboxの場合は早期リターン
-    if let Some(last_bbox) = last_view.bbox {
-        if last_bbox == *bbox && !last_view.expanded {
-            return None;
-        }
+    if let Some(last_bbox) = last_view.bbox
+        && last_bbox == *bbox
+        && !last_view.expanded
+    {
+        return None;
     }
     last_view.bbox = Some(*bbox);
 
