@@ -119,6 +119,7 @@ pub fn run() {
     camera.min_zoom = 0.003;
     camera.max_zoom = 0.12;
     camera.zoom_speed = 0.2;
+    camera.zoom_smoothing = 0.2;
 
     let mut config = RunConfig::new("Infinite Spectres").with_camera(camera);
     config.sample_count = 4;
