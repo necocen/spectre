@@ -76,11 +76,17 @@ impl App for SpectreApp {
         let half_size = Vec2::new(half_size.x.max(MIN_SIZE), half_size.y.max(MIN_SIZE));
         let bbox = crate::utils::Aabb::from_min_max(center - half_size, center + half_size);
 
-        // タイル更新
-        if let Some(instances) =
-            controller::update_tiles(&mut self.controller, &mut self.last_view, &bbox)
-        {
-            self.renderer.update_instances(ctx.gpu, &instances);
+        // タイル更新（expand が発生した場合は同一フレーム内で再計算、最大3回）
+        for _ in 0..3 {
+            match controller::update_tiles(&mut self.controller, &mut self.last_view, &bbox) {
+                Some(instances) => {
+                    self.renderer.update_instances(ctx.gpu, &instances);
+                    if !self.last_view.expanded {
+                        break;
+                    }
+                }
+                None => break,
+            }
         }
     }
 
