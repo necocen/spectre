@@ -28,120 +28,66 @@ impl Skeleton {
         level: usize,
         inherited_bbox: Option<Aabb>,
     ) -> Self {
-        let coordinate = coordinate.into();
-        let edge_direction = edge_direction.into();
-        let (g, d, b, a) = match anchor {
-            Anchor::Anchor1 => {
-                let g = if level == 1 {
-                    Spectre::with_anchor(Anchor::Anchor3, coordinate, edge_direction).into()
-                } else {
-                    Skeleton::with_anchor(
-                        Anchor::Anchor3,
-                        coordinate,
-                        edge_direction,
-                        level - 1,
-                        None,
-                    )
-                };
-                let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
-                let a = h.connected_skeleton(Anchor::Anchor1, Anchor::Anchor1);
-                let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                let d = c.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                // let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                // let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                (g, d, b, a)
-            }
-            Anchor::Anchor2 => {
-                let d = if level == 1 {
-                    Spectre::with_anchor(Anchor::Anchor2, coordinate, edge_direction).into()
-                } else {
-                    Skeleton::with_anchor(
-                        Anchor::Anchor2,
-                        coordinate,
-                        edge_direction,
-                        level - 1,
-                        None,
-                    )
-                };
-                let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                let g = f.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
-                let a = h.connected_skeleton(Anchor::Anchor1, Anchor::Anchor1);
-                let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                // let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                (g, d, b, a)
-            }
-            Anchor::Anchor3 => {
-                let b = if level == 1 {
-                    Spectre::with_anchor(Anchor::Anchor3, coordinate, edge_direction).into()
-                } else {
-                    Skeleton::with_anchor(
-                        Anchor::Anchor3,
-                        coordinate,
-                        edge_direction,
-                        level - 1,
-                        None,
-                    )
-                };
-                let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                let d = c.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                let g = f.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
-                let a = h.connected_skeleton(Anchor::Anchor1, Anchor::Anchor1);
-                (g, d, b, a)
-            }
-            Anchor::Anchor4 => {
-                let a = if level == 1 {
-                    Spectre::with_anchor(Anchor::Anchor2, coordinate, edge_direction).into()
-                } else {
-                    Skeleton::with_anchor(
-                        Anchor::Anchor2,
-                        coordinate,
-                        edge_direction,
-                        level - 1,
-                        None,
-                    )
-                };
-                let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                let d = c.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-                let g = f.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-                // let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
-                (g, d, b, a)
-            }
+        // 子の循環接続チェーン: children[i] →(from, to)→ children[(i+1)%8]
+        const EDGE_CHAIN: [(Anchor, Anchor); 8] = [
+            (Anchor::Anchor3, Anchor::Anchor1), // a→b
+            (Anchor::Anchor4, Anchor::Anchor2), // b→c
+            (Anchor::Anchor3, Anchor::Anchor1), // c→d
+            (Anchor::Anchor3, Anchor::Anchor1), // d→e
+            (Anchor::Anchor4, Anchor::Anchor2), // e→f
+            (Anchor::Anchor3, Anchor::Anchor1), // f→g
+            (Anchor::Anchor4, Anchor::Anchor4), // g→h
+            (Anchor::Anchor1, Anchor::Anchor1), // h→a
+        ];
+
+        // (起点の子インデックス, 起点アンカー, g/d/b/a に到達するのに必要なステップ数)
+        let (start_idx, start_anchor, steps) = match anchor {
+            Anchor::Anchor1 => (6, Anchor::Anchor3, 5), // g→...→d まで5ステップ
+            Anchor::Anchor2 => (3, Anchor::Anchor2, 6), // d→...→b まで6ステップ
+            Anchor::Anchor3 => (1, Anchor::Anchor3, 7), // b→...→a まで7ステップ
+            Anchor::Anchor4 => (0, Anchor::Anchor2, 6), // a→...→g まで6ステップ
         };
 
-        let anchor1 = g.coordinate(Anchor::Anchor3);
-        let anchor2 = d.coordinate(Anchor::Anchor2);
-        let anchor3 = b.coordinate(Anchor::Anchor3);
-        let anchor4 = a.coordinate(Anchor::Anchor2);
-        let edge_direction_into_anchor1 = g.edge_direction_into(Anchor::Anchor3);
-        let edge_direction_from_anchor1 = g.edge_direction_from(Anchor::Anchor3);
-        let edge_direction_into_anchor2 = d.edge_direction_into(Anchor::Anchor2);
-        let edge_direction_from_anchor2 = d.edge_direction_from(Anchor::Anchor2);
-        let edge_direction_into_anchor3 = b.edge_direction_into(Anchor::Anchor3);
-        let edge_direction_from_anchor3 = b.edge_direction_from(Anchor::Anchor3);
-        let edge_direction_into_anchor4 = a.edge_direction_into(Anchor::Anchor2);
-        let edge_direction_from_anchor4 = a.edge_direction_from(Anchor::Anchor2);
+        let coordinate = coordinate.into();
+        let edge_direction = edge_direction.into();
+
+        // チェーン順に子を構築（座標抽出に必要な g, d, b, a に到達するまで）
+        let first: Skeleton = if level == 1 {
+            Spectre::with_anchor(start_anchor, coordinate, edge_direction).into()
+        } else {
+            Skeleton::with_anchor(start_anchor, coordinate, edge_direction, level - 1, None)
+        };
+
+        let mut children = [None; 8];
+        children[start_idx] = Some(first);
+        for i in 0..steps {
+            let curr_idx = (start_idx + i) % 8;
+            let (from_anchor, to_anchor) = EDGE_CHAIN[curr_idx];
+            let next = children[curr_idx]
+                .unwrap()
+                .connected_skeleton(from_anchor, to_anchor);
+            children[(curr_idx + 1) % 8] = Some(next);
+        }
+
+        // SpectreCluster のアンカー座標は g, d, b, a の特定アンカーから導出される
+        let g = children[6].unwrap();
+        let d = children[3].unwrap();
+        let b = children[1].unwrap();
+        let a = children[0].unwrap();
+
         Self {
-            anchor1,
-            anchor2,
-            anchor3,
-            anchor4,
-            edge_direction_into_anchor1,
-            edge_direction_from_anchor1,
-            edge_direction_into_anchor2,
-            edge_direction_from_anchor2,
-            edge_direction_into_anchor3,
-            edge_direction_from_anchor3,
-            edge_direction_into_anchor4,
-            edge_direction_from_anchor4,
+            anchor1: g.coordinate(Anchor::Anchor3),
+            anchor2: d.coordinate(Anchor::Anchor2),
+            anchor3: b.coordinate(Anchor::Anchor3),
+            anchor4: a.coordinate(Anchor::Anchor2),
+            edge_direction_into_anchor1: g.edge_direction_into(Anchor::Anchor3),
+            edge_direction_from_anchor1: g.edge_direction_from(Anchor::Anchor3),
+            edge_direction_into_anchor2: d.edge_direction_into(Anchor::Anchor2),
+            edge_direction_from_anchor2: d.edge_direction_from(Anchor::Anchor2),
+            edge_direction_into_anchor3: b.edge_direction_into(Anchor::Anchor3),
+            edge_direction_from_anchor3: b.edge_direction_from(Anchor::Anchor3),
+            edge_direction_into_anchor4: a.edge_direction_into(Anchor::Anchor2),
+            edge_direction_from_anchor4: a.edge_direction_from(Anchor::Anchor2),
             level,
             inherited_bbox,
         }

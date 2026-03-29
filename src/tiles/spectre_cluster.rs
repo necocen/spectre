@@ -79,78 +79,50 @@ impl SpectreCluster {
         edge_direction: impl Into<Angle>,
         level: usize,
     ) -> Self {
+        // 子の循環接続チェーン: children[i] →(from, to)→ children[(i+1)%8]
+        const EDGE_CHAIN: [(Anchor, Anchor); 8] = [
+            (Anchor::Anchor3, Anchor::Anchor1), // a→b
+            (Anchor::Anchor4, Anchor::Anchor2), // b→c
+            (Anchor::Anchor3, Anchor::Anchor1), // c→d
+            (Anchor::Anchor3, Anchor::Anchor1), // d→e
+            (Anchor::Anchor4, Anchor::Anchor2), // e→f
+            (Anchor::Anchor3, Anchor::Anchor1), // f→g
+            (Anchor::Anchor4, Anchor::Anchor4), // g→h
+            (Anchor::Anchor1, Anchor::Anchor1), // h→a
+        ];
+
+        let (start_idx, start_anchor) = match anchor {
+            Anchor::Anchor1 => (6, Anchor::Anchor3), // g から開始
+            Anchor::Anchor2 => (3, Anchor::Anchor2), // d から開始
+            Anchor::Anchor3 => (1, Anchor::Anchor3), // b から開始
+            Anchor::Anchor4 => (0, Anchor::Anchor2), // a から開始
+        };
+
         let edge_direction: Angle = edge_direction.into();
         let coordinate: HexVec = coordinate.into();
-        match anchor {
-            Anchor::Anchor1 => {
-                let g = SpectreLike::with_anchor(
-                    Anchor::Anchor3,
-                    coordinate,
-                    edge_direction,
-                    level - 1,
-                );
-                let h = g.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
-                let a = h.connected_spectre_like(Anchor::Anchor1, Anchor::Anchor1);
-                let b = a.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let c = b.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
-                let d = c.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let e = d.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let f = e.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
-                let h = h.into_mystic_like();
-                Self::new(a, b, c, d, e, f, g, h, level)
-            }
-            Anchor::Anchor2 => {
-                let d = SpectreLike::with_anchor(
-                    Anchor::Anchor2,
-                    coordinate,
-                    edge_direction,
-                    level - 1,
-                );
-                let e = d.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let f = e.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
-                let g = f.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let h = g.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
-                let a = h.connected_spectre_like(Anchor::Anchor1, Anchor::Anchor1);
-                let b = a.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let c = b.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
-                let h = h.into_mystic_like();
-                Self::new(a, b, c, d, e, f, g, h, level)
-            }
-            Anchor::Anchor3 => {
-                let b = SpectreLike::with_anchor(
-                    Anchor::Anchor3,
-                    coordinate,
-                    edge_direction,
-                    level - 1,
-                );
-                let c = b.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
-                let d = c.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let e = d.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let f = e.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
-                let g = f.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let h = g.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
-                let a = h.connected_spectre_like(Anchor::Anchor1, Anchor::Anchor1);
-                let h = h.into_mystic_like();
-                Self::new(a, b, c, d, e, f, g, h, level)
-            }
-            Anchor::Anchor4 => {
-                let a = SpectreLike::with_anchor(
-                    Anchor::Anchor2,
-                    coordinate,
-                    edge_direction,
-                    level - 1,
-                );
-                let b = a.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let c = b.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
-                let d = c.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let e = d.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let f = e.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
-                let g = f.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-                let h = g.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
-                let h = h.into_mystic_like();
-                Self::new(a, b, c, d, e, f, g, h, level)
-            }
+
+        // チェーン順に子を構築
+        let mut chain = Vec::with_capacity(8);
+        chain.push(SpectreLike::with_anchor(
+            start_anchor,
+            coordinate,
+            edge_direction,
+            level - 1,
+        ));
+        for i in 0..7 {
+            let (from_anchor, to_anchor) = EDGE_CHAIN[(start_idx + i) % 8];
+            let next = chain.last().unwrap().connected_spectre_like(from_anchor, to_anchor);
+            chain.push(next);
         }
+
+        // チェーン順から [a, b, c, d, e, f, g, h] 順に並べ替え
+        let mut children: [Option<SpectreLike>; 8] = Default::default();
+        for (i, child) in chain.into_iter().enumerate() {
+            children[(start_idx + i) % 8] = Some(child);
+        }
+        let [a, b, c, d, e, f, g, h] = children.map(|c| c.unwrap());
+        let h = h.into_mystic_like();
+        Self::new(a, b, c, d, e, f, g, h, level)
     }
 
     pub fn with_child_a(a: SpectreCluster) -> Self {
