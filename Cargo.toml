@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-mikage = { git = "https://github.com/necocen/mikage.git", tag = "v0.3.3", features = ["webgl"] }
+mikage = { git = "https://github.com/necocen/mikage.git", tag = "v0.3.4", features = ["webgl"] }
 glam = { version = "0.29", features = ["bytemuck"] }
 bytemuck = { version = "1.21.0", features = ["derive"] }
 lyon_tessellation = "1.0.15"
