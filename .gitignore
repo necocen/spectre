@@ -46,3 +46,6 @@ target/
 profile.json
 /dist
 /.wrangler
+/node_modules
+/.cloudflare
+/.env*

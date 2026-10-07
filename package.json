@@ -1,0 +1,22 @@
+{
+  "name": "spectre",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "dev": "trunk build --locked && cf dev",
+    "build": "trunk build --locked && cf build",
+    "deploy": "cf deploy --prebuilt"
+  },
+  "devDependencies": {
+    "cf": "1.0.0-beta.13",
+    "wrangler": "4.148.0"
+  },
+  "overrides": {
+    "miniflare": {
+      "sharp": "0.35.5"
+    }
+  }
+}
