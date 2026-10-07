@@ -80,6 +80,16 @@ run manually. Its GitHub secrets are `CLOUDFLARE_API_TOKEN` and
 the account and Workers Routes edit / Zone read permissions for the custom
 domain's zone.
 
+For the initial cutover from Pages, first validate the deployment at
+`https://spectre.necocen.workers.dev`. Remove only the Pages CNAME for
+`spectre.necocen.info` in Cloudflare DNS, then run `npx wrangler@4.148.0 deploy`
+to create the Workers Custom Domain. After confirming the custom domain serves
+the Worker, remove that domain from the Pages project's Custom domains list.
+The old Pages deployment can remain available at its `pages.dev` address.
+Wrangler cannot replace a Pages-managed DNS record; its OAuth login also does
+not grant permission to delete DNS records, so this initial DNS change needs
+the dashboard or a separate API token with DNS edit permission.
+
 See Cloudflare's [Pages-to-Workers migration guide](https://developers.cloudflare.com/workers/static-assets/migration-guides/migrate-from-pages/).
 
 ## References
