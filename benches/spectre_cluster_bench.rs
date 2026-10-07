@@ -1,8 +1,65 @@
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use std::time::Duration;
+
+use criterion::{BatchSize, BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use glam::Vec2;
 use spectre::{
+    TilesController,
     tiles::{Anchor, SpectreCluster},
     utils::{Aabb, Angle, HexVec},
 };
+
+fn viewport(zoom: f32, x: f32) -> Aabb {
+    let center = Vec2::new(x, 0.0);
+    let half_size = Vec2::new(16.0 / 9.0 / zoom, 1.0 / zoom);
+    Aabb::from_min_max(center - half_size, center + half_size)
+}
+
+fn bench_controller(c: &mut Criterion) {
+    let mut group = c.benchmark_group("controller");
+    group.sample_size(20);
+    group.warm_up_time(Duration::from_secs(1));
+    group.measurement_time(Duration::from_secs(2));
+    let wide = viewport(0.003, 0.0);
+    group.bench_function("initial_minimum_zoom", |b| {
+        b.iter_batched(
+            TilesController::new,
+            |mut controller| black_box(controller.update_view(black_box(&wide)).unwrap().len()),
+            BatchSize::LargeInput,
+        );
+    });
+
+    let pans: Vec<_> = (1..=120)
+        .map(|frame| viewport(0.003, frame as f32 * 0.05))
+        .collect();
+    let mut controller = TilesController::new();
+    controller.update_view(&wide);
+    group.bench_function("cached_120_pans", |b| {
+        b.iter(|| {
+            let uploads = pans
+                .iter()
+                .filter(|view| controller.update_view(black_box(view)).is_some())
+                .count();
+            black_box(uploads)
+        });
+    });
+
+    let distant = viewport(0.003, 500.0);
+    group.bench_function("pan_beyond_margin_and_back", |b| {
+        b.iter(|| {
+            black_box(controller.update_view(black_box(&distant)).unwrap().len());
+            black_box(controller.update_view(black_box(&wide)).unwrap().len())
+        });
+    });
+
+    let close = viewport(0.12, 0.0);
+    group.bench_function("zoom_in_and_out", |b| {
+        b.iter(|| {
+            black_box(controller.update_view(black_box(&close)).unwrap().len());
+            black_box(controller.update_view(black_box(&wide)).unwrap().len())
+        });
+    });
+    group.finish();
+}
 
 fn create_spectre_cluster(level: usize) -> SpectreCluster {
     SpectreCluster::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO, level)
@@ -123,6 +180,7 @@ fn bench_spectres_in_position(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    bench_controller,
     bench_spectres_in,
     bench_spectres_in_with_size,
     bench_spectres_in_position

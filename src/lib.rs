@@ -1,4 +1,3 @@
-use glam::Vec2;
 use mikage::wgpu;
 use mikage::winit::dpi::PhysicalSize;
 use mikage::{
@@ -10,13 +9,12 @@ mod controller;
 pub mod tiles;
 pub mod utils;
 
-use controller::{LastViewState, SpectreInstance, TilesController};
+pub use controller::{SpectreInstance, TilesController};
 
 struct SpectreApp {
     renderer: InstanceRenderer<SpectreInstance>,
     scene: SceneBinding,
     controller: TilesController,
-    last_view: LastViewState,
 }
 
 impl SpectreApp {
@@ -52,7 +50,6 @@ impl SpectreApp {
             renderer,
             scene,
             controller: TilesController::new(),
-            last_view: LastViewState::default(),
         }
     }
 }
@@ -70,23 +67,9 @@ impl App for SpectreApp {
 
         // カメラのビューに基づいてbboxを計算
         let (vp_min, vp_max) = ctx.camera.viewport_bounds(aspect);
-        let half_size = (vp_max - vp_min) * 0.5 * 1.5; // 1.5倍のマージン
-        let center = (vp_min + vp_max) * 0.5;
-        const MIN_SIZE: f32 = 15.0;
-        let half_size = Vec2::new(half_size.x.max(MIN_SIZE), half_size.y.max(MIN_SIZE));
-        let bbox = crate::utils::Aabb::from_min_max(center - half_size, center + half_size);
-
-        // タイル更新（expand が発生した場合は同一フレーム内で再計算、最大3回）
-        for _ in 0..3 {
-            match controller::update_tiles(&mut self.controller, &mut self.last_view, &bbox) {
-                Some(instances) => {
-                    self.renderer.update_instances(ctx.gpu, &instances);
-                    if !self.last_view.expanded {
-                        break;
-                    }
-                }
-                None => break,
-            }
+        let viewport = crate::utils::Aabb::from_min_max(vp_min, vp_max);
+        if let Some(instances) = self.controller.update_view(&viewport) {
+            self.renderer.update_instances(ctx.gpu, instances);
         }
     }
 
