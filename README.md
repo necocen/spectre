@@ -30,6 +30,29 @@ Serving locally for development:
 trunk serve
 ```
 
+## Validation
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --all-targets --locked -- -D warnings
+cargo test --locked
+rustup target add wasm32-unknown-unknown
+cargo check --locked --target wasm32-unknown-unknown
+```
+
+The tests cover tile geometry, conservative cluster bounds, lazy loading against
+fully expanded clusters, and viewport coverage after panning, zooming, and resizing.
+Regression cases include tiles missing near a cluster boundary and an empty region
+inside the root's bounding box. CI runs these checks on pull requests and before
+deployment. Cargo.lock is tracked so local builds and CI use the same dependencies.
+
+To measure initial generation, cached panning, panning beyond the generated margin,
+and zooming in and out:
+
+```bash
+cargo bench --locked --bench spectre_cluster_bench -- controller
+```
+
 ## References
 
 1. Smith, D., Myers, J. S, Kaplan, C. S, & Goodman-Strauss, C. (2024). [A chiral aperiodic monotile](https://doi.org/10.5070/C64264241). Combinatorial Theory, 4(2).

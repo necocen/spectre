@@ -7,7 +7,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  checks:
+    uses: ./.github/workflows/ci.yaml
   build:
+    needs: checks
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -21,7 +24,7 @@ jobs:
       - name: Install Trunk
         run: cargo install trunk
       - name: Build
-        run: trunk build
+        run: trunk build --locked
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:
