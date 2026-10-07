@@ -1,8 +1,9 @@
-name : Deploy to Cloudflare Pages
+name: Deploy to Cloudflare Workers
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -19,6 +20,9 @@ jobs:
     steps:
       - uses: Kesin11/actions-timeline@v2
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - name: Set up Rust
         run: |
           rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown
@@ -29,9 +33,10 @@ jobs:
       - name: Build
         run: trunk build --locked
       - name: Deploy
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=spectre --commit-dirty=true
+          wranglerVersion: "4.148.0"
+          command: deploy
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}

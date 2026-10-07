@@ -53,6 +53,35 @@ and zooming in and out:
 cargo bench --locked --bench spectre_cluster_bench -- controller
 ```
 
+## Deployment
+
+Cloudflare Workers serves the Trunk build in `dist` as Static Assets. The Worker
+name and custom domain (`spectre.necocen.info`) are configured in `wrangler.toml`.
+The serving configuration preserves the index.html fallback previously used by
+Pages, and does not require a Worker script.
+
+Build and preview the Workers deployment locally:
+
+```bash
+trunk build --locked
+npx wrangler@4.148.0 dev --local
+```
+
+Deploy manually:
+
+```bash
+npx wrangler@4.148.0 deploy
+```
+
+Pushes to `main` run validation, build the web assets, and deploy through
+`.github/workflows/deploy-to-cloudflare-workers.yaml`. The workflow can also be
+run manually. Its GitHub secrets are `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID`. The token needs Workers Scripts edit permissions for
+the account and Workers Routes edit / Zone read permissions for the custom
+domain's zone.
+
+See Cloudflare's [Pages-to-Workers migration guide](https://developers.cloudflare.com/workers/static-assets/migration-guides/migrate-from-pages/).
+
 ## References
 
 1. Smith, D., Myers, J. S, Kaplan, C. S, & Goodman-Strauss, C. (2024). [A chiral aperiodic monotile](https://doi.org/10.5070/C64264241). Combinatorial Theory, 4(2).

@@ -45,3 +45,4 @@ target/
 
 profile.json
 /dist
+/.wrangler
