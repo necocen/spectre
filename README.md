@@ -77,12 +77,13 @@ npm run dev
 Deploy manually:
 
 ```bash
-npx cf auth login --scopes user:read account:read workers:write \
+npx cf auth login --no-device --scopes user:read account:read workers:write \
   workers_scripts:write workers_routes:write zone:read ssl_certs:write
 npm run build
 npm run deploy
 ```
 
+`--no-device` opens a browser and uses a localhost callback for local login.
 `cf` has its own login; an existing Wrangler login is not reused. `npm run build`
 builds the Rust/WASM assets and writes `.cloudflare/output/v0/`. The deploy script
 uses `cf deploy --prebuilt` to deploy that build without rebuilding it. To validate
