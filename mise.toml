@@ -1,0 +1,24 @@
+[tools]
+node = "24.21.0"
+"github:trunk-rs/trunk" = "0.21.14"
+
+[tasks.check]
+description = "Run the CI checks"
+run = [
+  "cargo fmt --all -- --check",
+  "cargo clippy --all-targets --locked -- -D warnings",
+  "cargo test --locked",
+  "cargo check --locked --target wasm32-unknown-unknown",
+]
+
+[tasks.build]
+description = "Build the web application and Worker"
+# Trunk 0.21 requires a boolean value for NO_COLOR.
+env.NO_COLOR = "true"
+run = "npm run build"
+
+[tasks.dev]
+description = "Run the local Worker development server"
+env.NO_COLOR = "true"
+raw = true
+run = "npm run dev"

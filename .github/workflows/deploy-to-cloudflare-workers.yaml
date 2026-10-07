@@ -22,19 +22,15 @@ jobs:
     steps:
       - uses: Kesin11/actions-timeline@v2
       - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
           cache: npm
       - name: Install deployment dependencies
         run: npm ci
       - name: Set up Rust
-        run: |
-          rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown
-          rustup default stable
+        run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@v2
-      - name: Install Trunk
-        run: cargo install trunk
       - name: Build
         run: npm run build
       - name: Validate deployment
