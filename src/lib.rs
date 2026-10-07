@@ -1,8 +1,8 @@
+use mikage::dpi::PhysicalSize;
 use mikage::wgpu;
-use mikage::winit::dpi::PhysicalSize;
 use mikage::{
-    App, Camera2d, FrameContext, GpuContext, InstanceRenderer, InstanceRendererConfig, RunConfig,
-    SceneBinding, ShaderProcessor, UpdateContext,
+    App, Camera2d, GpuContext, InstanceRenderer, InstanceRendererConfig, RenderContext,
+    RenderTargetConfig, RenderUpdateContext, RunConfig, RunError, SceneBinding, ShaderProcessor,
 };
 
 mod controller;
@@ -18,7 +18,7 @@ struct SpectreApp {
 }
 
 impl SpectreApp {
-    fn new(gpu: &GpuContext, _size: PhysicalSize<u32>) -> Self {
+    fn new(gpu: &GpuContext, target: RenderTargetConfig, _size: PhysicalSize<u32>) -> Self {
         let scene = SceneBinding::new(&gpu.device);
 
         // シェーダーを解決
@@ -38,6 +38,7 @@ impl SpectreApp {
         };
         let renderer = InstanceRenderer::<SpectreInstance>::with_shader(
             gpu,
+            target,
             scene.layout(),
             &positions,
             &normals,
@@ -57,11 +58,11 @@ impl SpectreApp {
 impl App for SpectreApp {
     type Camera = Camera2d;
 
-    fn update(&mut self, ctx: &mut UpdateContext<Camera2d>) {
-        let window_size = (ctx.window_size.width, ctx.window_size.height);
+    fn prepare_render(&mut self, ctx: &mut RenderUpdateContext<Camera2d>) {
+        let target_size = ctx.target_size;
 
         // シーンユニフォーム更新
-        let aspect = window_size.0 as f32 / window_size.1.max(1) as f32;
+        let aspect = target_size.width as f32 / target_size.height.max(1) as f32;
         self.scene
             .update_from_camera(&ctx.gpu.queue, ctx.camera, aspect);
 
@@ -73,7 +74,7 @@ impl App for SpectreApp {
         }
     }
 
-    fn encode(&mut self, ctx: &mut FrameContext<Camera2d>) {
+    fn render(&mut self, ctx: &mut RenderContext<Camera2d>) {
         let mut pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("spectre_pass"),
             color_attachments: &[Some(ctx.color_attachment(wgpu::Operations {
@@ -88,6 +89,7 @@ impl App for SpectreApp {
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
 
         pass.set_bind_group(0, self.scene.bind_group(), &[]);
@@ -95,7 +97,7 @@ impl App for SpectreApp {
     }
 }
 
-pub fn run() {
+pub fn run() -> Result<(), RunError> {
     let mut camera = Camera2d::default();
     camera.zoom = 0.028;
     camera.damping = 0.95;
@@ -106,8 +108,5 @@ pub fn run() {
 
     let mut config = RunConfig::new("Infinite Spectres").with_camera(camera);
     config.sample_count = 4;
-    mikage::run(
-        |gpu: &GpuContext, size: PhysicalSize<u32>| SpectreApp::new(gpu, size),
-        config,
-    );
+    mikage::run(SpectreApp::new, config)
 }

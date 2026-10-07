@@ -1,3 +1,3 @@
-fn main() {
-    spectre::run();
+fn main() -> Result<(), mikage::RunError> {
+    spectre::run()
 }

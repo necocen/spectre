@@ -10,7 +10,7 @@ Live demo here: https://spectre.necocen.info/
 ## How to build
 ### What You'll Need
 
-- Rust (2024 edition or newer)
+- Rust 1.95 or newer
 - [Trunk](https://trunkrs.dev/) for web builds
 
 ### Build Commands
