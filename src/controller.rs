@@ -352,10 +352,11 @@ mod tests {
     fn tessellated_mesh_has_correct_area_winding_and_indices() {
         let (positions, normals, indices) = create_spectre_mesh();
         assert_eq!(positions.len(), normals.len());
-        assert_eq!(indices.len() % 3, 0);
+        let (triangles, remainder) = indices.as_chunks::<3>();
+        assert!(remainder.is_empty());
         let mut area = 0.0;
-        for triangle in indices.chunks_exact(3) {
-            let vertices = [triangle[0], triangle[1], triangle[2]].map(|index| {
+        for triangle in triangles {
+            let vertices = triangle.map(|index| {
                 let p = positions[index as usize];
                 glam::DVec2::new(f64::from(p[0]), f64::from(p[1]))
             });
