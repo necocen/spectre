@@ -3,9 +3,9 @@ use crate::utils::{Aabb, Angle, HexVec};
 use super::{Anchor, Mystic, MysticCluster, Skeleton};
 
 pub enum MysticLike {
-    Mystic(Mystic),
-    Cluster(MysticCluster),
-    Skeleton(Skeleton),
+    Mystic(Box<Mystic>),
+    Cluster(Box<MysticCluster>),
+    Skeleton(Box<Skeleton>),
 }
 
 impl MysticLike {
@@ -18,7 +18,7 @@ impl MysticLike {
                     return;
                 }
                 // mystic_clusterをskeletonにする
-                *self = MysticLike::Skeleton(cluster.to_skeleton())
+                *self = cluster.to_skeleton().into()
             }
             MysticLike::Skeleton(skeleton) => {
                 if !skeleton.estimated_bbox().has_intersection(bbox) {
@@ -73,18 +73,24 @@ impl MysticLike {
 
 impl From<Mystic> for MysticLike {
     fn from(mystic: Mystic) -> Self {
-        MysticLike::Mystic(mystic)
+        MysticLike::Mystic(Box::new(mystic))
     }
 }
 
 impl From<MysticCluster> for MysticLike {
     fn from(cluster: MysticCluster) -> Self {
-        MysticLike::Cluster(cluster)
+        MysticLike::Cluster(Box::new(cluster))
     }
 }
 
 impl From<Skeleton> for MysticLike {
     fn from(skeleton: Skeleton) -> Self {
-        MysticLike::Skeleton(skeleton)
+        MysticLike::Skeleton(Box::new(skeleton))
+    }
+}
+
+impl From<Box<MysticLike>> for MysticLike {
+    fn from(value: Box<MysticLike>) -> Self {
+        *value
     }
 }

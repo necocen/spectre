@@ -57,11 +57,40 @@ impl Aabb {
             && self.min.y <= point.y
             && point.y <= self.max.y
     }
+
+    pub fn contains_aabb(&self, other: &Self) -> bool {
+        !self.is_empty()
+            && !other.is_empty()
+            && self.contains(other.min)
+            && self.contains(other.max)
+    }
+
+    pub fn area(&self) -> f64 {
+        if self.is_empty() {
+            return 0.0;
+        }
+        (f64::from(self.max.x) - f64::from(self.min.x))
+            * (f64::from(self.max.y) - f64::from(self.min.y))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn containment_and_area_handle_empty_and_touching_boxes() {
+        let outer = Aabb::new(-2.0, -3.0, 2.0, 3.0);
+        assert_eq!(outer.area(), 24.0);
+        assert!(outer.contains_aabb(&outer));
+        assert!(outer.contains_aabb(&Aabb::new(0.0, 0.0, 2.0, 3.0)));
+        assert!(!outer.contains_aabb(&Aabb::new(0.0, 0.0, 3.0, 3.0)));
+        assert!(!outer.contains_aabb(&Aabb::NULL));
+        assert!(!Aabb::NULL.contains_aabb(&outer));
+        assert_eq!(Aabb::NULL.area(), 0.0);
+        assert_eq!(Aabb::new(0.0, 0.0, 0.0, 1.0).area(), 0.0);
+        assert!(!outer.has_intersection(&Aabb::new(2.0, 0.0, 3.0, 1.0)));
+    }
 
     #[test]
     fn test_constructors() {

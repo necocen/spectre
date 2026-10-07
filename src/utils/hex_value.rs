@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 
 use super::Angle;
@@ -47,6 +48,30 @@ impl std::fmt::Debug for HexValue {
 impl std::fmt::Display for HexValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(self, f)
+    }
+}
+
+impl Ord for HexValue {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let rational = i128::from(self.rational) - i128::from(other.rational);
+        let irrational = i128::from(self.irrational) - i128::from(other.irrational);
+        match (rational.cmp(&0), irrational.cmp(&0)) {
+            (Ordering::Equal, order) | (order, Ordering::Equal) => order,
+            (Ordering::Greater, Ordering::Greater) => Ordering::Greater,
+            (Ordering::Less, Ordering::Less) => Ordering::Less,
+            (Ordering::Greater, Ordering::Less) => {
+                (rational * rational).cmp(&(3 * irrational * irrational))
+            }
+            (Ordering::Less, Ordering::Greater) => {
+                (3 * irrational * irrational).cmp(&(rational * rational))
+            }
+        }
+    }
+}
+
+impl PartialOrd for HexValue {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -105,6 +130,10 @@ impl HexValue {
     /// f32に変換
     pub fn to_f32(self) -> f32 {
         self.rational as f32 / 2.0 + self.irrational as f32 * 3.0_f32.sqrt() / 2.0
+    }
+
+    pub fn to_f64(self) -> f64 {
+        (f64::from(self.rational) + f64::from(self.irrational) * 3.0_f64.sqrt()) * 0.5
     }
 }
 
@@ -178,6 +207,35 @@ impl Div<i32> for HexValue {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ordering_is_exact_even_when_f32_values_are_indistinguishable() {
+        let a = HexValue::new(100_000_000, 0);
+        let b = HexValue::new(100_000_001, 0);
+        assert_eq!(a.to_f32(), b.to_f32());
+        assert!(a < b);
+        assert!(HexValue::new(3, -2) < HexValue::ZERO);
+        assert!(HexValue::new(-3, 2) > HexValue::ZERO);
+        assert!(HexValue::new(i32::MIN, i32::MIN) < HexValue::new(i32::MAX, i32::MAX));
+        assert!(HexValue::new(i32::MAX, i32::MIN) < HexValue::new(i32::MIN, i32::MAX));
+        assert_eq!(a.partial_cmp(&a), Some(std::cmp::Ordering::Equal));
+    }
+
+    #[test]
+    fn ordering_matches_real_values_for_small_coefficients() {
+        for rational in -8..=8 {
+            for irrational in -8..=8 {
+                let value = HexValue::new(rational, irrational);
+                for other in [HexValue::ZERO, HexValue::new(1, 1), HexValue::new(-1, -1)] {
+                    assert_eq!(
+                        value.cmp(&other),
+                        value.to_f64().partial_cmp(&other.to_f64()).unwrap()
+                    );
+                    assert_eq!(value.cmp(&other), other.cmp(&value).reverse());
+                }
+            }
+        }
+    }
 
     #[test]
     fn test_constructors() {

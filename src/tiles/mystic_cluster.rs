@@ -1,15 +1,15 @@
 use crate::utils::{Aabb, Angle, HexVec};
 
-use super::{Anchor, MysticLike, Skeleton, SpectreLike, MIN_PARTIAL_CLUSTER_LEVEL};
+use super::{Anchor, MIN_PARTIAL_CLUSTER_LEVEL, MysticLike, Skeleton, SpectreLike};
 
 pub struct MysticCluster {
-    pub(super) a: Box<SpectreLike>,
-    pub(super) b: Box<SpectreLike>,
-    pub(super) c: Box<SpectreLike>,
-    pub(super) d: Box<SpectreLike>,
-    pub(super) f: Box<SpectreLike>,
-    pub(super) g: Box<SpectreLike>,
-    pub(super) h: Box<MysticLike>,
+    pub(super) a: SpectreLike,
+    pub(super) b: SpectreLike,
+    pub(super) c: SpectreLike,
+    pub(super) d: SpectreLike,
+    pub(super) f: SpectreLike,
+    pub(super) g: SpectreLike,
+    pub(super) h: MysticLike,
     level: usize,
     bbox: Aabb,
 }
@@ -17,15 +17,22 @@ pub struct MysticCluster {
 impl MysticCluster {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        a: Box<SpectreLike>,
-        b: Box<SpectreLike>,
-        c: Box<SpectreLike>,
-        d: Box<SpectreLike>,
-        f: Box<SpectreLike>,
-        g: Box<SpectreLike>,
-        h: Box<MysticLike>,
+        a: impl Into<SpectreLike>,
+        b: impl Into<SpectreLike>,
+        c: impl Into<SpectreLike>,
+        d: impl Into<SpectreLike>,
+        f: impl Into<SpectreLike>,
+        g: impl Into<SpectreLike>,
+        h: impl Into<MysticLike>,
         level: usize,
     ) -> Self {
+        let a = a.into();
+        let b = b.into();
+        let c = c.into();
+        let d = d.into();
+        let f = f.into();
+        let g = g.into();
+        let h = h.into();
         let mut bbox = Aabb::NULL;
         bbox = bbox.union(&a.bbox());
         bbox = bbox.union(&b.bbox());

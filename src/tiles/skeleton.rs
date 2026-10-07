@@ -1,6 +1,9 @@
 use crate::utils::{Aabb, Angle, HexVec};
 
-use super::{Anchor, Spectre, SpectreCluster, SpectreLike, MIN_PARTIAL_CLUSTER_LEVEL};
+use super::{
+    Anchor, EDGE_CHAIN, MAX_CLUSTER_LEVEL, MIN_PARTIAL_CLUSTER_LEVEL, Spectre, SpectreCluster,
+    SpectreLike,
+};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Skeleton {
@@ -28,17 +31,10 @@ impl Skeleton {
         level: usize,
         inherited_bbox: Option<Aabb>,
     ) -> Self {
-        // 子の循環接続チェーン: children[i] →(from, to)→ children[(i+1)%8]
-        const EDGE_CHAIN: [(Anchor, Anchor); 8] = [
-            (Anchor::Anchor3, Anchor::Anchor1), // a→b
-            (Anchor::Anchor4, Anchor::Anchor2), // b→c
-            (Anchor::Anchor3, Anchor::Anchor1), // c→d
-            (Anchor::Anchor3, Anchor::Anchor1), // d→e
-            (Anchor::Anchor4, Anchor::Anchor2), // e→f
-            (Anchor::Anchor3, Anchor::Anchor1), // f→g
-            (Anchor::Anchor4, Anchor::Anchor4), // g→h
-            (Anchor::Anchor1, Anchor::Anchor1), // h→a
-        ];
+        assert!(
+            (1..=MAX_CLUSTER_LEVEL).contains(&level),
+            "unsupported cluster level: {level}"
+        );
 
         // (起点の子インデックス, 起点アンカー, g/d/b/a に到達するのに必要なステップ数)
         let (start_idx, start_anchor, steps) = match anchor {
@@ -151,37 +147,16 @@ impl Skeleton {
             );
         }
 
-        let mut sub_spectre_likes = self
-            .split_into_skeletons()
-            .into_iter()
-            .map(|sub_skeleton| {
-                if sub_skeleton.estimated_bbox().has_intersection(bbox) {
-                    SpectreLike::from(sub_skeleton.to_spectre_cluster(bbox))
-                } else {
-                    SpectreLike::Skeleton(sub_skeleton)
-                }
-            })
-            .collect::<Vec<_>>();
-        let h = sub_spectre_likes.pop().unwrap().into_mystic_like();
-        let g = sub_spectre_likes.pop().unwrap();
-        let f = sub_spectre_likes.pop().unwrap();
-        let e = sub_spectre_likes.pop().unwrap();
-        let d = sub_spectre_likes.pop().unwrap();
-        let c = sub_spectre_likes.pop().unwrap();
-        let b = sub_spectre_likes.pop().unwrap();
-        let a = sub_spectre_likes.pop().unwrap();
+        let [a, b, c, d, e, f, g, h] = self.split_into_skeletons().map(|sub_skeleton| {
+            if sub_skeleton.estimated_bbox().has_intersection(bbox) {
+                SpectreLike::from(sub_skeleton.to_spectre_cluster(bbox))
+            } else {
+                SpectreLike::from(sub_skeleton)
+            }
+        });
+        let h = h.into_mystic_like();
 
-        SpectreCluster::new(
-            Box::new(a),
-            Box::new(b),
-            Box::new(c),
-            Box::new(d),
-            Box::new(e),
-            Box::new(f),
-            Box::new(g),
-            Box::new(h),
-            self.level,
-        )
+        SpectreCluster::new(a, b, c, d, e, f, g, h, self.level)
     }
 
     pub fn coordinate(&self, anchor: Anchor) -> HexVec {
@@ -216,45 +191,7 @@ impl Skeleton {
             return inherited_bbox;
         }
 
-        let axis2 = self.anchor2 - self.anchor1;
-        let axis4 = self.anchor4 - self.anchor1;
-        let p5 = self.anchor1 + axis2 - axis4 / 2;
-        let p6 = self.anchor1 - axis2 / 2 + axis4 / 4;
-        let p7 = self.anchor1 + axis2 + axis4 / 2;
-
-        let points = [
-            self.anchor1,
-            self.anchor2,
-            self.anchor3,
-            self.anchor4,
-            p5,
-            p6,
-            p7,
-        ];
-        let mut min_x = f32::INFINITY;
-        let mut min_y = f32::INFINITY;
-        let mut max_x = f32::NEG_INFINITY;
-        let mut max_y = f32::NEG_INFINITY;
-
-        for p in points {
-            let p = p.to_vec2();
-            min_x = min_x.min(p.x);
-            min_y = min_y.min(p.y);
-            max_x = max_x.max(p.x);
-            max_y = max_y.max(p.y);
-        }
-
-        let expanded_min_x = min_x - (max_x - min_x) * 0.25;
-        let expanded_min_y = min_y - (max_y - min_y) * 0.25;
-        let expanded_max_x = max_x + (max_x - min_x) * 0.25;
-        let expanded_max_y = max_y + (max_y - min_y) * 0.25;
-
-        Aabb::new(
-            expanded_min_x,
-            expanded_min_y,
-            expanded_max_x,
-            expanded_max_y,
-        )
+        super::bounds::spectre_bounds(self)
     }
 
     pub fn level(&self) -> usize {
@@ -262,7 +199,7 @@ impl Skeleton {
     }
 
     /// 一つ下のlevelのskeletonのリストに変換
-    fn split_into_skeletons(self) -> [Skeleton; 8] {
+    pub(super) fn split_into_skeletons(self) -> [Skeleton; 8] {
         let a = if self.level == 1 {
             Spectre::with_anchor(
                 Anchor::Anchor2,
@@ -279,15 +216,14 @@ impl Skeleton {
                 None,
             )
         };
-        let b = a.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let c = b.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-        let d = c.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let e = d.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let f = e.connected_skeleton(Anchor::Anchor4, Anchor::Anchor2);
-        let g = f.connected_skeleton(Anchor::Anchor3, Anchor::Anchor1);
-        let h = g.connected_skeleton(Anchor::Anchor4, Anchor::Anchor4);
-
-        [a, b, c, d, e, f, g, h]
+        let mut child = a;
+        std::array::from_fn(|index| {
+            if index > 0 {
+                let (from, to) = EDGE_CHAIN[index - 1];
+                child = child.connected_skeleton(from, to);
+            }
+            child
+        })
     }
 }
 

@@ -11,89 +11,47 @@ enum Node<'a> {
 }
 
 impl<'a> Node<'a> {
+    fn from_spectre_like(child: &'a SpectreLike) -> Option<Self> {
+        match child {
+            SpectreLike::Spectre(tile) => Some(Self::Spectre(tile)),
+            SpectreLike::Cluster(cluster) => Some(Self::SpectreCluster(cluster)),
+            SpectreLike::Skeleton(_) => None,
+        }
+    }
+
+    fn from_mystic_like(child: &'a MysticLike) -> Option<Self> {
+        match child {
+            MysticLike::Mystic(pair) => Some(Self::Mystic(pair)),
+            MysticLike::Cluster(cluster) => Some(Self::MysticCluster(cluster)),
+            MysticLike::Skeleton(_) => None,
+        }
+    }
+
     fn get_child(&self, index: usize) -> Option<Node<'a>> {
         match self {
-            Node::SpectreCluster(cluster) => match index {
-                0 => match &*cluster.a {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                1 => match &*cluster.b {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                2 => match &*cluster.c {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                3 => match &*cluster.d {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                4 => match &*cluster.e {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                5 => match &*cluster.f {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                6 => match &*cluster.g {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                7 => match &*cluster.h {
-                    MysticLike::Mystic(mystic) => Some(Node::Mystic(mystic)),
-                    MysticLike::Cluster(cluster) => Some(Node::MysticCluster(cluster)),
-                    MysticLike::Skeleton(_) => None,
-                },
-                _ => None,
-            },
-            Node::MysticCluster(cluster) => match index {
-                0 => match &*cluster.a {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                1 => match &*cluster.b {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                2 => match &*cluster.c {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                3 => match &*cluster.d {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                4 => match &*cluster.f {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                5 => match &*cluster.g {
-                    SpectreLike::Spectre(spectre) => Some(Node::Spectre(spectre)),
-                    SpectreLike::Cluster(cluster) => Some(Node::SpectreCluster(cluster)),
-                    SpectreLike::Skeleton(_) => None,
-                },
-                6 => match &*cluster.h {
-                    MysticLike::Mystic(mystic) => Some(Node::Mystic(mystic)),
-                    MysticLike::Cluster(cluster) => Some(Node::MysticCluster(cluster)),
-                    MysticLike::Skeleton(_) => None,
-                },
-                _ => None,
-            },
+            Node::SpectreCluster(cluster) => {
+                if index == 7 {
+                    Self::from_mystic_like(&cluster.h)
+                } else {
+                    [
+                        &cluster.a, &cluster.b, &cluster.c, &cluster.d, &cluster.e, &cluster.f,
+                        &cluster.g,
+                    ]
+                    .get(index)
+                    .and_then(|child| Self::from_spectre_like(child))
+                }
+            }
+            Node::MysticCluster(cluster) => {
+                if index == 6 {
+                    Self::from_mystic_like(&cluster.h)
+                } else {
+                    [
+                        &cluster.a, &cluster.b, &cluster.c, &cluster.d, &cluster.f, &cluster.g,
+                    ]
+                    .get(index)
+                    .and_then(|child| Self::from_spectre_like(child))
+                }
+            }
             Node::Spectre(_) => None,
             Node::Mystic(mystic) => match index {
                 0 => Some(Node::Spectre(mystic.lower())),
@@ -136,10 +94,9 @@ pub struct SpectreIter<'a> {
 
 impl<'a> SpectreIter<'a> {
     pub fn new(root: &'a SpectreCluster, bbox: Aabb) -> SpectreIter<'a> {
-        SpectreIter {
-            parents: vec![(root.into(), 0)],
-            bbox,
-        }
+        let mut parents = Vec::with_capacity(root.level() + 2);
+        parents.push((root.into(), 0));
+        SpectreIter { parents, bbox }
     }
 }
 

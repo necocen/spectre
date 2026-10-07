@@ -1,19 +1,19 @@
 use crate::utils::{Aabb, Angle, HexVec};
 
 use super::{
-    Anchor, MysticCluster, MysticLike, Skeleton, SpectreIter, SpectreLike,
-    MIN_PARTIAL_CLUSTER_LEVEL,
+    Anchor, EDGE_CHAIN, MAX_CLUSTER_LEVEL, MIN_PARTIAL_CLUSTER_LEVEL, MysticCluster, MysticLike,
+    Skeleton, SpectreIter, SpectreLike,
 };
 
 pub struct SpectreCluster {
-    pub(super) a: Box<SpectreLike>,
-    pub(super) b: Box<SpectreLike>,
-    pub(super) c: Box<SpectreLike>,
-    pub(super) d: Box<SpectreLike>,
-    pub(super) e: Box<SpectreLike>,
-    pub(super) f: Box<SpectreLike>,
-    pub(super) g: Box<SpectreLike>,
-    pub(super) h: Box<MysticLike>,
+    pub(super) a: SpectreLike,
+    pub(super) b: SpectreLike,
+    pub(super) c: SpectreLike,
+    pub(super) d: SpectreLike,
+    pub(super) e: SpectreLike,
+    pub(super) f: SpectreLike,
+    pub(super) g: SpectreLike,
+    pub(super) h: MysticLike,
     level: usize,
     bbox: Aabb,
 }
@@ -21,14 +21,14 @@ pub struct SpectreCluster {
 impl SpectreCluster {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        a: impl Into<Box<SpectreLike>>,
-        b: impl Into<Box<SpectreLike>>,
-        c: impl Into<Box<SpectreLike>>,
-        d: impl Into<Box<SpectreLike>>,
-        e: impl Into<Box<SpectreLike>>,
-        f: impl Into<Box<SpectreLike>>,
-        g: impl Into<Box<SpectreLike>>,
-        h: impl Into<Box<MysticLike>>,
+        a: impl Into<SpectreLike>,
+        b: impl Into<SpectreLike>,
+        c: impl Into<SpectreLike>,
+        d: impl Into<SpectreLike>,
+        e: impl Into<SpectreLike>,
+        f: impl Into<SpectreLike>,
+        g: impl Into<SpectreLike>,
+        h: impl Into<MysticLike>,
         level: usize,
     ) -> Self {
         let a = a.into();
@@ -48,7 +48,7 @@ impl SpectreCluster {
         assert_eq!(f.coordinate(Anchor::Anchor3), g.coordinate(Anchor::Anchor1));
         assert_eq!(g.coordinate(Anchor::Anchor4), h.coordinate(Anchor::Anchor4));
 
-        // Calculate AABB only for existing parts
+        // Bounds include both materialized children and unloaded skeletons.
         let mut bbox = Aabb::NULL;
         bbox = bbox.union(&a.bbox());
         bbox = bbox.union(&b.bbox());
@@ -79,17 +79,10 @@ impl SpectreCluster {
         edge_direction: impl Into<Angle>,
         level: usize,
     ) -> Self {
-        // 子の循環接続チェーン: children[i] →(from, to)→ children[(i+1)%8]
-        const EDGE_CHAIN: [(Anchor, Anchor); 8] = [
-            (Anchor::Anchor3, Anchor::Anchor1), // a→b
-            (Anchor::Anchor4, Anchor::Anchor2), // b→c
-            (Anchor::Anchor3, Anchor::Anchor1), // c→d
-            (Anchor::Anchor3, Anchor::Anchor1), // d→e
-            (Anchor::Anchor4, Anchor::Anchor2), // e→f
-            (Anchor::Anchor3, Anchor::Anchor1), // f→g
-            (Anchor::Anchor4, Anchor::Anchor4), // g→h
-            (Anchor::Anchor1, Anchor::Anchor1), // h→a
-        ];
+        assert!(
+            (1..=MAX_CLUSTER_LEVEL).contains(&level),
+            "unsupported cluster level: {level}"
+        );
 
         let (start_idx, start_anchor) = match anchor {
             Anchor::Anchor1 => (6, Anchor::Anchor3), // g から開始
@@ -101,58 +94,47 @@ impl SpectreCluster {
         let edge_direction: Angle = edge_direction.into();
         let coordinate: HexVec = coordinate.into();
 
-        // チェーン順に子を構築
-        let mut chain = Vec::with_capacity(8);
-        chain.push(SpectreLike::with_anchor(
-            start_anchor,
-            coordinate,
-            edge_direction,
-            level - 1,
-        ));
-        for i in 0..7 {
-            let (from_anchor, to_anchor) = EDGE_CHAIN[(start_idx + i) % 8];
-            let next = chain.last().unwrap().connected_spectre_like(from_anchor, to_anchor);
-            chain.push(next);
-        }
+        let first = SpectreLike::with_anchor(start_anchor, coordinate, edge_direction, level - 1);
+        Self::from_children(Self::connected_children(first, start_idx), level)
+    }
 
-        // チェーン順から [a, b, c, d, e, f, g, h] 順に並べ替え
-        let mut children: [Option<SpectreLike>; 8] = Default::default();
-        for (i, child) in chain.into_iter().enumerate() {
-            children[(start_idx + i) % 8] = Some(child);
+    fn connected_children(first: SpectreLike, start: usize) -> [SpectreLike; 8] {
+        let mut children: [Option<SpectreLike>; 8] = std::array::from_fn(|_| None);
+        children[start] = Some(first);
+        for step in 0..7 {
+            let index = (start + step) % 8;
+            let (from, to) = EDGE_CHAIN[index];
+            let next = children[index]
+                .as_ref()
+                .unwrap()
+                .connected_spectre_like(from, to);
+            children[(index + 1) % 8] = Some(next);
         }
-        let [a, b, c, d, e, f, g, h] = children.map(|c| c.unwrap());
+        children.map(Option::unwrap)
+    }
+
+    fn from_children([a, b, c, d, e, f, g, h]: [SpectreLike; 8], level: usize) -> Self {
         let h = h.into_mystic_like();
         Self::new(a, b, c, d, e, f, g, h, level)
     }
 
     pub fn with_child_a(a: SpectreCluster) -> Self {
-        let level = a.level() + 1;
-        let a_skeleton = SpectreLike::from(a.to_skeleton());
-        let a = SpectreLike::from(a);
-        let b = a_skeleton.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-        let c = b.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
-        let d = c.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-        let e = d.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-        let f = e.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
-        let g = f.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-        let h = g.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
-        let h = h.into_mystic_like();
-        Self::new(a, b, c, d, e, f, g, h, level)
+        Self::with_child_at(a, 0)
     }
 
     pub fn with_child_f(f: SpectreCluster) -> Self {
-        let level = f.level() + 1;
-        let f_skeleton = SpectreLike::from(f.to_skeleton());
-        let f = SpectreLike::from(f);
-        let g = f_skeleton.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-        let h = g.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor4);
-        let a = h.connected_spectre_like(Anchor::Anchor1, Anchor::Anchor1);
-        let b = a.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-        let c = b.connected_spectre_like(Anchor::Anchor4, Anchor::Anchor2);
-        let d = c.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-        let e = d.connected_spectre_like(Anchor::Anchor3, Anchor::Anchor1);
-        let h = h.into_mystic_like();
-        Self::new(a, b, c, d, e, f, g, h, level)
+        Self::with_child_at(f, 5)
+    }
+
+    fn with_child_at(child: SpectreCluster, index: usize) -> Self {
+        let level = child.level() + 1;
+        assert!(
+            level <= MAX_CLUSTER_LEVEL,
+            "unsupported cluster level: {level}"
+        );
+        let mut children = Self::connected_children(child.to_skeleton().into(), index);
+        children[index] = child.into();
+        Self::from_children(children, level)
     }
 
     pub fn connected_cluster(&self, from_anchor: Anchor, to_anchor: Anchor) -> SpectreCluster {

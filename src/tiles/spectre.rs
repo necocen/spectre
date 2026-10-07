@@ -1,6 +1,13 @@
 use crate::utils::{Aabb, Angle, HexValue, HexVec};
+use glam::DVec2;
+use std::sync::OnceLock;
 
-use super::{Anchor, Mystic};
+use super::{Anchor, Mystic, bounds::ExactBounds};
+
+struct Geometry {
+    vertices: [HexVec; Spectre::VERTEX_COUNT],
+    bounds: ExactBounds,
+}
 
 /// タイルの形状を表す
 #[derive(Clone, Copy)]
@@ -92,16 +99,10 @@ impl Spectre {
 
     /// 頂点
     pub fn vertices(&self) -> Vec<HexVec> {
-        let mut points = Vec::with_capacity(Self::VERTEX_COUNT);
-        let mut p = self.anchor1;
-        points.push(p);
-
-        for i in 0..Self::VERTEX_COUNT - 1 {
-            let dir = Self::direction_vector(self.rotation, Self::EDGE_DIRECTIONS[i]);
-            p += dir;
-            points.push(p);
-        }
-        points
+        Self::geometry(self.rotation)
+            .vertices
+            .map(|p| p + self.anchor1)
+            .to_vec()
     }
 
     /// 指定された頂点と方向を基準にSpectreを生成する
@@ -111,37 +112,13 @@ impl Spectre {
     /// * `index` - 基準点のインデックス
     /// * `edge_direction` - anchor_pointから出る辺の角度
     fn with_vertex(vertex: HexVec, index: usize, edge_direction: Angle) -> Self {
-        let mut vertices = [HexVec::ZERO; Self::VERTEX_COUNT];
-        vertices[index] = vertex;
         let angle = edge_direction - Self::EDGE_DIRECTIONS[index];
-
-        // アンカーから前方の点を配置
-        Self::place_vertices_before(&mut vertices[..index], vertex, angle);
-
-        // アンカーから後方の点を配置
-        Self::place_vertices_after(&mut vertices[index + 1..], vertex, index, angle);
-
-        // Calculate AABB more efficiently using min/max tracking
-        let mut min_x = f32::INFINITY;
-        let mut min_y = f32::INFINITY;
-        let mut max_x = f32::NEG_INFINITY;
-        let mut max_y = f32::NEG_INFINITY;
-
-        for p in vertices.iter() {
-            let x = p.x.to_f32();
-            let y = p.y.to_f32();
-            min_x = min_x.min(x);
-            min_y = min_y.min(y);
-            max_x = max_x.max(x);
-            max_y = max_y.max(y);
-        }
-
-        let bbox = Aabb::new(min_x, min_y, max_x, max_y);
-
+        let geometry = Self::geometry(angle);
+        let anchor1 = vertex - geometry.vertices[index];
         Self {
             rotation: angle,
-            anchor1: vertices[0],
-            bbox,
+            anchor1,
+            bbox: geometry.bounds.translated(anchor1).to_aabb(),
         }
     }
 
@@ -151,42 +128,101 @@ impl Spectre {
         HexVec::new(HexValue::cos(total_angle), HexValue::sin(total_angle))
     }
 
-    /// アンカーより前方の点を配置する（時計回り）
-    fn place_vertices_before(vertices: &mut [HexVec], start: HexVec, angle: Angle) {
-        let mut p = start;
-        for (i, point) in vertices.iter_mut().enumerate().rev() {
-            let dir = Self::direction_vector(angle, Self::EDGE_DIRECTIONS[i]);
-            p -= dir;
-            *point = p;
-        }
-    }
-
-    /// アンカーより後方の点を配置する（反時計回り）
-    fn place_vertices_after(
-        vertices: &mut [HexVec],
-        start: HexVec,
-        anchor_index: usize,
-        angle: Angle,
-    ) {
-        let mut p = start;
-        for (i, point) in vertices.iter_mut().enumerate() {
-            let dir = Self::direction_vector(angle, Self::EDGE_DIRECTIONS[anchor_index + i]);
-            p += dir;
-            *point = p;
-        }
-    }
-
     fn vertex(&self, index: usize) -> HexVec {
-        if index == 0 {
-            return self.anchor1;
+        self.anchor1 + Self::geometry(self.rotation).vertices[index]
+    }
+
+    fn geometry(rotation: Angle) -> &'static Geometry {
+        static GEOMETRY: OnceLock<[Geometry; 12]> = OnceLock::new();
+        &GEOMETRY.get_or_init(|| {
+            std::array::from_fn(|direction| {
+                let rotation = Angle::new(direction as i32);
+                let mut vertices = [HexVec::ZERO; Self::VERTEX_COUNT];
+                for index in 1..Self::VERTEX_COUNT {
+                    vertices[index] = vertices[index - 1]
+                        + Self::direction_vector(rotation, Self::EDGE_DIRECTIONS[index - 1]);
+                }
+                Geometry {
+                    bounds: ExactBounds::from_points(vertices),
+                    vertices,
+                }
+            })
+        })[rotation.value() as usize]
+    }
+
+    pub fn area() -> f64 {
+        3.0 * (1.0 + 3.0_f64.sqrt())
+    }
+
+    /// Area covered inside the rectangle. Unlike a bounding-box or centroid
+    /// check, clipping also detects gaps along the concave cluster boundary.
+    pub fn area_in(&self, bbox: &Aabb) -> f64 {
+        if !self.bbox.has_intersection(bbox) {
+            return 0.0;
+        }
+        if bbox.contains_aabb(&self.bbox) {
+            return Self::area();
         }
 
-        // Calculate points using a cumulative approach
-        let mut p = self.anchor1;
-        for i in 0..index {
-            let dir = Self::direction_vector(self.rotation, Self::EDGE_DIRECTIONS[i]);
-            p += dir;
+        // Work relative to the tile's anchor to avoid subtracting large products
+        // in the shoelace formula. Each half-plane can at most double the number
+        // of vertices; both buffers fit all four clipping steps without allocation.
+        const CAPACITY: usize = Spectre::VERTEX_COUNT * 16;
+        let anchor = DVec2::new(self.anchor1.x.to_f64(), self.anchor1.y.to_f64());
+        let min = bbox.min.as_dvec2() - anchor;
+        let max = bbox.max.as_dvec2() - anchor;
+        let mut polygon = [DVec2::ZERO; CAPACITY];
+        let mut scratch = [DVec2::ZERO; CAPACITY];
+        for (out, vertex) in polygon
+            .iter_mut()
+            .zip(Self::geometry(self.rotation).vertices)
+        {
+            *out = DVec2::new(vertex.x.to_f64(), vertex.y.to_f64());
         }
-        p
+        let (mut source, mut target) = (&mut polygon, &mut scratch);
+        let mut count = Self::VERTEX_COUNT;
+        for (axis, boundary, keep_greater) in [
+            (0, min.x, true),
+            (0, max.x, false),
+            (1, min.y, true),
+            (1, max.y, false),
+        ] {
+            if count == 0 {
+                return 0.0;
+            }
+            let inside = |p: DVec2| {
+                if keep_greater {
+                    p[axis] >= boundary
+                } else {
+                    p[axis] <= boundary
+                }
+            };
+            let mut output_count = 0;
+            let mut previous = source[count - 1];
+            for current in source[..count].iter().copied() {
+                if inside(previous) != inside(current) {
+                    let t = (boundary - previous[axis]) / (current[axis] - previous[axis]);
+                    let mut intersection = previous + (current - previous) * t;
+                    intersection[axis] = boundary;
+                    target[output_count] = intersection;
+                    output_count += 1;
+                }
+                if inside(current) {
+                    target[output_count] = current;
+                    output_count += 1;
+                }
+                previous = current;
+            }
+            count = output_count;
+            std::mem::swap(&mut source, &mut target);
+        }
+        if count < 3 {
+            return 0.0;
+        }
+        (0..count)
+            .map(|index| source[index].perp_dot(source[(index + 1) % count]))
+            .sum::<f64>()
+            .abs()
+            * 0.5
     }
 }
