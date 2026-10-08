@@ -14,9 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Rust
-        run: |
-          rustup toolchain install stable --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
-          rustup default stable
+        run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@v2
       - name: Formatting
         run: cargo fmt --all -- --check
