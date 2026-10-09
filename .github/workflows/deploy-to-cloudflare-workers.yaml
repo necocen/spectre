@@ -20,7 +20,7 @@ jobs:
       CF_SEND_TELEMETRY: "false"
       WRANGLER_SEND_METRICS: "false"
     steps:
-      - uses: Kesin11/actions-timeline@v2
+      - uses: Kesin11/actions-timeline@v3
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
       - uses: actions/setup-node@v7
