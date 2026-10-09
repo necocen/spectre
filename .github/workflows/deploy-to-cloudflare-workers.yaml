@@ -23,7 +23,7 @@ jobs:
       - uses: Kesin11/actions-timeline@v2
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           cache: npm
       - name: Install deployment dependencies
