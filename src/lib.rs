@@ -1,10 +1,12 @@
 use mikage::dpi::PhysicalSize;
 use mikage::wgpu;
 use mikage::{
-    App, Camera2d, GpuContext, InstanceRenderer, InstanceRendererConfig, RenderContext,
-    RenderTargetConfig, RenderUpdateContext, RunConfig, RunError, SceneBinding, ShaderProcessor,
+    App, Camera2d, GpuContext, InstanceRenderer, InstanceRendererConfig, RedrawPolicy,
+    RenderContext, RenderTargetConfig, RenderUpdateContext, RunConfig, RunError, SceneBinding,
+    ShaderProcessor, SimulationPolicy,
 };
 
+mod camera;
 mod controller;
 pub mod tiles;
 pub mod utils;
@@ -98,15 +100,11 @@ impl App for SpectreApp {
 }
 
 pub fn run() -> Result<(), RunError> {
-    let mut camera = Camera2d::default();
-    camera.zoom = 0.028;
-    camera.damping = 0.95;
-    camera.min_zoom = 0.003;
-    camera.max_zoom = 0.12;
-    camera.zoom_speed = 0.2;
-    camera.zoom_smoothing = 0.2;
-
-    let mut config = RunConfig::new("Infinite Spectres").with_camera(camera);
+    let mut config = RunConfig::new("Infinite Spectres")
+        .with_camera(camera::new())
+        .with_redraw_policy(RedrawPolicy::Reactive)
+        // Tiles are updated during rendering; there is no simulation to tick.
+        .with_simulation_policy(SimulationPolicy::Manual);
     config.sample_count = 4;
     mikage::run(SpectreApp::new, config)
 }
