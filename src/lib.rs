@@ -1,11 +1,9 @@
-use std::cell::Cell;
-use std::rc::Rc;
-
 use mikage::dpi::PhysicalSize;
 use mikage::wgpu;
 use mikage::{
-    App, GpuContext, InstanceRenderer, InstanceRendererConfig, RedrawPolicy, RenderContext,
-    RenderTargetConfig, RenderUpdateContext, RunConfig, RunError, SceneBinding, ShaderProcessor,
+    App, Camera2d, GpuContext, InstanceRenderer, InstanceRendererConfig, RedrawPolicy,
+    RenderContext, RenderTargetConfig, RenderUpdateContext, RunConfig, RunError, SceneBinding,
+    ShaderProcessor, SimulationPolicy,
 };
 
 mod camera;
@@ -15,22 +13,14 @@ pub mod utils;
 
 pub use controller::{SpectreInstance, TilesController};
 
-use camera::SpectreCamera;
-
 struct SpectreApp {
     renderer: InstanceRenderer<SpectreInstance>,
     scene: SceneBinding,
     controller: TilesController,
-    camera_animating: Rc<Cell<bool>>,
 }
 
 impl SpectreApp {
-    fn new(
-        gpu: &GpuContext,
-        target: RenderTargetConfig,
-        _size: PhysicalSize<u32>,
-        camera_animating: Rc<Cell<bool>>,
-    ) -> Self {
+    fn new(gpu: &GpuContext, target: RenderTargetConfig, _size: PhysicalSize<u32>) -> Self {
         let scene = SceneBinding::new(&gpu.device);
 
         // シェーダーを解決
@@ -63,23 +53,14 @@ impl SpectreApp {
             renderer,
             scene,
             controller: TilesController::new(),
-            camera_animating,
         }
     }
 }
 
 impl App for SpectreApp {
-    type Camera = SpectreCamera;
+    type Camera = Camera2d;
 
-    fn gui(&mut self, ui: &mut mikage::egui::Ui) {
-        // Camera::update runs before this hook. Keep redraws alive only while
-        // inertia or smooth zoom is changing the view.
-        if self.camera_animating.get() {
-            ui.ctx().request_repaint();
-        }
-    }
-
-    fn prepare_render(&mut self, ctx: &mut RenderUpdateContext<SpectreCamera>) {
+    fn prepare_render(&mut self, ctx: &mut RenderUpdateContext<Camera2d>) {
         let target_size = ctx.target_size;
 
         // シーンユニフォーム更新
@@ -95,7 +76,7 @@ impl App for SpectreApp {
         }
     }
 
-    fn render(&mut self, ctx: &mut RenderContext<SpectreCamera>) {
+    fn render(&mut self, ctx: &mut RenderContext<Camera2d>) {
         let mut pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("spectre_pass"),
             color_attachments: &[Some(ctx.color_attachment(wgpu::Operations {
@@ -119,15 +100,11 @@ impl App for SpectreApp {
 }
 
 pub fn run() -> Result<(), RunError> {
-    let camera_animating = Rc::new(Cell::new(false));
-    let camera = SpectreCamera::new(camera_animating.clone());
-
     let mut config = RunConfig::new("Infinite Spectres")
-        .with_camera(camera)
-        .with_redraw_policy(RedrawPolicy::Reactive);
+        .with_camera(camera::new())
+        .with_redraw_policy(RedrawPolicy::Reactive)
+        // Tiles are updated during rendering; there is no simulation to tick.
+        .with_simulation_policy(SimulationPolicy::Manual);
     config.sample_count = 4;
-    mikage::run(
-        move |gpu, target, size| SpectreApp::new(gpu, target, size, camera_animating),
-        config,
-    )
+    mikage::run(SpectreApp::new, config)
 }
