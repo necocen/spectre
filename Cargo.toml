@@ -12,7 +12,7 @@ lyon_tessellation = "1.0.15"
 tracing = "0.1.41"
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 
 [[bench]]
 name = "spectre_cluster_bench"
