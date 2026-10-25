@@ -1,9 +1,8 @@
-use glam::Vec2;
 use lyon_tessellation::{
     FillOptions, FillTessellator, VertexBuffers, geom::Point, geometry_builder::simple_builder,
     path::Path,
 };
-use mikage::InstanceVertex;
+use mikage::{InstanceVertex, glam::Vec2};
 
 use crate::{
     tiles::{Anchor, Skeleton, Spectre, SpectreCluster, SpectreIter},
@@ -184,6 +183,7 @@ impl TilesController {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use mikage::glam::DVec2;
 
     fn viewport(zoom: f32, position: Vec2) -> Aabb {
         let half_size = Vec2::new(16.0 / 9.0 / zoom, 1.0 / zoom);
@@ -358,7 +358,7 @@ mod tests {
         for triangle in triangles {
             let vertices = triangle.map(|index| {
                 let p = positions[index as usize];
-                glam::DVec2::new(f64::from(p[0]), f64::from(p[1]))
+                DVec2::new(f64::from(p[0]), f64::from(p[1]))
             });
             let signed_area = (vertices[1] - vertices[0]).perp_dot(vertices[2] - vertices[0]) * 0.5;
             assert!(

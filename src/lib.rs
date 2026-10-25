@@ -70,10 +70,7 @@ impl App for SpectreApp {
 
         // カメラのビューに基づいてbboxを計算
         let (vp_min, vp_max) = ctx.camera.viewport_bounds(aspect);
-        let viewport = crate::utils::Aabb::from_min_max(
-            glam::Vec2::from_array(vp_min.to_array()),
-            glam::Vec2::from_array(vp_max.to_array()),
-        );
+        let viewport = crate::utils::Aabb::from_min_max(vp_min, vp_max);
         if let Some(instances) = self.controller.update_view(&viewport) {
             self.renderer.update_instances(ctx.gpu, instances);
         }

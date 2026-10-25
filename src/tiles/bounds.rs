@@ -1,6 +1,6 @@
 use std::sync::OnceLock;
 
-use glam::DVec2;
+use mikage::glam::DVec2;
 
 use super::{Anchor, MAX_CLUSTER_LEVEL, Skeleton, Spectre};
 use crate::utils::{Aabb, Angle, HexVec};
