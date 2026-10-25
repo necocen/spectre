@@ -993,8 +993,8 @@ dependencies = [
 
 [[package]]
 name = "mikage"
-version = "0.7.2"
-source = "git+https://github.com/necocen/mikage.git?tag=v0.7.2#63cdc887a87f451c648c9e3498b03be76b350f7e"
+version = "0.7.3"
+source = "git+https://github.com/necocen/mikage.git?tag=v0.7.3#3390d374b3d0dacb3c876701923783dc7dc87a55"
 dependencies = [
  "bytemuck",
  "console_error_panic_hook",
