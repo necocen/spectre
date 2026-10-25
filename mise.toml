@@ -1,6 +1,6 @@
 [tools]
-node = "24.21.0"
-"github:trunk-rs/trunk" = "0.21.14"
+node = "24.22.1"
+"github:trunk-rs/trunk" = "0.22.0"
 
 [tasks.check]
 description = "Run the CI checks"
