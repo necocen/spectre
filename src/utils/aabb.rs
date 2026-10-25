@@ -1,4 +1,4 @@
-use glam::Vec2;
+use mikage::glam::Vec2;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Aabb {

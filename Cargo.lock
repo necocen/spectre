@@ -1963,7 +1963,6 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "criterion",
- "glam",
  "lyon_tessellation",
  "mikage",
  "tracing",

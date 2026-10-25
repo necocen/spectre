@@ -1,5 +1,5 @@
 use crate::utils::{Aabb, Angle, HexValue, HexVec};
-use glam::DVec2;
+use mikage::glam::DVec2;
 use std::sync::OnceLock;
 
 use super::{Anchor, Mystic, bounds::ExactBounds};

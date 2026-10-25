@@ -1,7 +1,7 @@
 use std::{hint::black_box, time::Duration};
 
 use criterion::{BatchSize, BenchmarkId, Criterion, criterion_group, criterion_main};
-use glam::Vec2;
+use mikage::glam::Vec2;
 use spectre::{
     TilesController,
     tiles::{Anchor, SpectreCluster},

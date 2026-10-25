@@ -1,3 +1,4 @@
+use mikage::glam::Vec2;
 use spectre::{
     tiles::{Anchor, Skeleton, Spectre, SpectreCluster},
     utils::{Aabb, Angle, HexValue, HexVec},
@@ -224,8 +225,7 @@ fn clipped_area_is_conserved_by_rectangular_partitions_for_all_directions() {
             for y in 0..8 {
                 let at = |ix, iy| {
                     bounds.min
-                        + (bounds.max - bounds.min)
-                            * glam::Vec2::new(ix as f32 / 8.0, iy as f32 / 8.0)
+                        + (bounds.max - bounds.min) * Vec2::new(ix as f32 / 8.0, iy as f32 / 8.0)
                 };
                 let query = Aabb::from_min_max(at(x, y), at(x + 1, y + 1));
                 let area = tile.area_in(&query);
