@@ -193,9 +193,9 @@ checksum = "5d20789868f4b01b2f2caec9f5c4e0213b41e3e5702a50157d699ae31ced2fcb"
 
 [[package]]
 name = "bytemuck"
-version = "1.25.0"
+version = "1.25.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8efb64bd706a16a1bdde310ae86b351e4d21550d98d056f22f8a7f7a2183fec"
+checksum = "95832e849adfb21180ccb6826a99da14e5d266ae5c2e668e1602cf234f153797"
 dependencies = [
  "bytemuck_derive",
 ]
@@ -955,9 +955,9 @@ dependencies = [
 
 [[package]]
 name = "lyon_tessellation"
-version = "1.0.20"
+version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e43b7e44161571868f5c931d12583592c223c5583eef86b08aa02b7048a3552"
+checksum = "fd4872650e70dc907dd4f7ebc449d7d657a0d2658e423b2e724970870bbbf75b"
 dependencies = [
  "float_next_after",
  "lyon_path",
@@ -990,8 +990,8 @@ dependencies = [
 
 [[package]]
 name = "mikage"
-version = "0.7.2"
-source = "git+https://github.com/necocen/mikage.git?tag=v0.7.2#63cdc887a87f451c648c9e3498b03be76b350f7e"
+version = "0.7.3"
+source = "git+https://github.com/necocen/mikage.git?tag=v0.7.3#3390d374b3d0dacb3c876701923783dc7dc87a55"
 dependencies = [
  "bytemuck",
  "console_error_panic_hook",
