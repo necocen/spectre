@@ -1,20 +1,16 @@
 use crate::utils::{Aabb, Angle, HexVec};
 
 use super::{
-    Anchor, EDGE_CHAIN, MAX_CLUSTER_LEVEL, MIN_PARTIAL_CLUSTER_LEVEL, MysticCluster, MysticLike,
-    Skeleton, SpectreIter, SpectreLike,
+    Anchor, MAX_CLUSTER_LEVEL, MIN_PARTIAL_CLUSTER_LEVEL, MysticCluster, MysticLike, Skeleton,
+    SpectreIter, SpectreLike, bounds,
 };
 
 pub struct SpectreCluster {
-    pub(super) a: SpectreLike,
-    pub(super) b: SpectreLike,
-    pub(super) c: SpectreLike,
-    pub(super) d: SpectreLike,
-    pub(super) e: SpectreLike,
-    pub(super) f: SpectreLike,
-    pub(super) g: SpectreLike,
+    pub(super) children: [SpectreLike; 7],
     pub(super) h: MysticLike,
-    level: usize,
+    anchor1: HexVec,
+    direction: Angle,
+    level: u8,
     bbox: Aabb,
 }
 
@@ -31,44 +27,93 @@ impl SpectreCluster {
         h: impl Into<MysticLike>,
         level: usize,
     ) -> Self {
-        let a = a.into();
-        let b = b.into();
-        let c = c.into();
-        let d = d.into();
-        let e = e.into();
-        let f = f.into();
-        let g = g.into();
+        let children = [
+            a.into(),
+            b.into(),
+            c.into(),
+            d.into(),
+            e.into(),
+            f.into(),
+            g.into(),
+        ];
         let h = h.into();
-        assert_eq!(h.coordinate(Anchor::Anchor1), a.coordinate(Anchor::Anchor1));
-        assert_eq!(a.coordinate(Anchor::Anchor3), b.coordinate(Anchor::Anchor1));
-        assert_eq!(b.coordinate(Anchor::Anchor4), c.coordinate(Anchor::Anchor2));
-        assert_eq!(c.coordinate(Anchor::Anchor3), d.coordinate(Anchor::Anchor1));
-        assert_eq!(d.coordinate(Anchor::Anchor3), e.coordinate(Anchor::Anchor1));
-        assert_eq!(e.coordinate(Anchor::Anchor4), f.coordinate(Anchor::Anchor2));
-        assert_eq!(f.coordinate(Anchor::Anchor3), g.coordinate(Anchor::Anchor1));
-        assert_eq!(g.coordinate(Anchor::Anchor4), h.coordinate(Anchor::Anchor4));
+        debug_assert_eq!(
+            h.coordinate(Anchor::Anchor1),
+            children[0].coordinate(Anchor::Anchor1)
+        );
+        debug_assert_eq!(
+            children[0].coordinate(Anchor::Anchor3),
+            children[1].coordinate(Anchor::Anchor1)
+        );
+        debug_assert_eq!(
+            children[1].coordinate(Anchor::Anchor4),
+            children[2].coordinate(Anchor::Anchor2)
+        );
+        debug_assert_eq!(
+            children[2].coordinate(Anchor::Anchor3),
+            children[3].coordinate(Anchor::Anchor1)
+        );
+        debug_assert_eq!(
+            children[3].coordinate(Anchor::Anchor3),
+            children[4].coordinate(Anchor::Anchor1)
+        );
+        debug_assert_eq!(
+            children[4].coordinate(Anchor::Anchor4),
+            children[5].coordinate(Anchor::Anchor2)
+        );
+        debug_assert_eq!(
+            children[5].coordinate(Anchor::Anchor3),
+            children[6].coordinate(Anchor::Anchor1)
+        );
+        debug_assert_eq!(
+            children[6].coordinate(Anchor::Anchor4),
+            h.coordinate(Anchor::Anchor4)
+        );
+
+        let anchor1 = children[6].coordinate(Anchor::Anchor3);
+        let direction = children[6].edge_direction_from(Anchor::Anchor3);
 
         // Bounds include both materialized children and unloaded skeletons.
-        let mut bbox = Aabb::NULL;
-        bbox = bbox.union(&a.bbox());
-        bbox = bbox.union(&b.bbox());
-        bbox = bbox.union(&c.bbox());
-        bbox = bbox.union(&d.bbox());
-        bbox = bbox.union(&e.bbox());
-        bbox = bbox.union(&f.bbox());
-        bbox = bbox.union(&g.bbox());
-        bbox = bbox.union(&h.bbox());
+        let mut bbox = h.bbox();
+        for child in &children {
+            bbox = bbox.union(&child.bbox());
+        }
 
         Self {
-            a,
-            b,
-            c,
-            d,
-            e,
-            f,
-            g,
+            children,
             h,
-            level,
+            anchor1,
+            direction,
+            level: level as u8,
+            bbox,
+        }
+    }
+
+    pub(crate) fn from_anchor1(anchor1: HexVec, direction: Angle, level: usize) -> Self {
+        let entry = bounds::table().entry(level, direction);
+        let child_level = level - 1;
+        let children = std::array::from_fn(|index| {
+            let placement = entry.children[index];
+            SpectreLike::from_anchor1(anchor1 + placement.offset, placement.direction, child_level)
+        });
+        let h_placement = entry.children[7];
+        let h = MysticLike::from_anchor1(
+            anchor1 + h_placement.offset,
+            h_placement.direction,
+            child_level,
+        );
+
+        let mut bbox = h.bbox();
+        for child in &children {
+            bbox = bbox.union(&child.bbox());
+        }
+
+        Self {
+            children,
+            h,
+            anchor1,
+            direction,
+            level: level as u8,
             bbox,
         }
     }
@@ -83,39 +128,9 @@ impl SpectreCluster {
             (1..=MAX_CLUSTER_LEVEL).contains(&level),
             "unsupported cluster level: {level}"
         );
-
-        let (start_idx, start_anchor) = match anchor {
-            Anchor::Anchor1 => (6, Anchor::Anchor3), // g から開始
-            Anchor::Anchor2 => (3, Anchor::Anchor2), // d から開始
-            Anchor::Anchor3 => (1, Anchor::Anchor3), // b から開始
-            Anchor::Anchor4 => (0, Anchor::Anchor2), // a から開始
-        };
-
-        let edge_direction: Angle = edge_direction.into();
-        let coordinate: HexVec = coordinate.into();
-
-        let first = SpectreLike::with_anchor(start_anchor, coordinate, edge_direction, level - 1);
-        Self::from_children(Self::connected_children(first, start_idx), level)
-    }
-
-    fn connected_children(first: SpectreLike, start: usize) -> [SpectreLike; 8] {
-        let mut children: [Option<SpectreLike>; 8] = std::array::from_fn(|_| None);
-        children[start] = Some(first);
-        for step in 0..7 {
-            let index = (start + step) % 8;
-            let (from, to) = EDGE_CHAIN[index];
-            let next = children[index]
-                .as_ref()
-                .unwrap()
-                .connected_spectre_like(from, to);
-            children[(index + 1) % 8] = Some(next);
-        }
-        children.map(Option::unwrap)
-    }
-
-    fn from_children([a, b, c, d, e, f, g, h]: [SpectreLike; 8], level: usize) -> Self {
-        let h = h.into_mystic_like();
-        Self::new(a, b, c, d, e, f, g, h, level)
+        let (anchor1, direction) =
+            bounds::table().resolve_anchor(level, anchor, coordinate.into(), edge_direction.into());
+        Self::from_anchor1(anchor1, direction, level)
     }
 
     pub fn with_child_a(a: SpectreCluster) -> Self {
@@ -127,108 +142,135 @@ impl SpectreCluster {
     }
 
     fn with_child_at(child: SpectreCluster, index: usize) -> Self {
-        let level = child.level() + 1;
+        let child_level = child.level();
+        let level = child_level + 1;
         assert!(
             level <= MAX_CLUSTER_LEVEL,
             "unsupported cluster level: {level}"
         );
-        let mut children = Self::connected_children(child.to_skeleton().into(), index);
-        children[index] = child.into();
-        Self::from_children(children, level)
+        let table = bounds::table();
+        let (anchor1, direction) =
+            table.wrap_child(child_level, child.anchor1, child.direction, index);
+        let entry = table.entry(level, direction);
+        let mut child_opt = Some(child);
+        let children: [SpectreLike; 7] = std::array::from_fn(|i| {
+            if i == index {
+                child_opt.take().unwrap().into()
+            } else {
+                let placement = entry.children[i];
+                Skeleton::from_anchor1(
+                    anchor1 + placement.offset,
+                    placement.direction,
+                    child_level,
+                    None,
+                )
+                .into()
+            }
+        });
+        let h_placement = entry.children[7];
+        let h = MysticLike::Skeleton(Skeleton::from_anchor1(
+            anchor1 + h_placement.offset,
+            h_placement.direction,
+            child_level,
+            None,
+        ));
+
+        let mut bbox = h.bbox();
+        for c in &children {
+            bbox = bbox.union(&c.bbox());
+        }
+
+        Self {
+            children,
+            h,
+            anchor1,
+            direction,
+            level: level as u8,
+            bbox,
+        }
     }
 
     pub fn connected_cluster(&self, from_anchor: Anchor, to_anchor: Anchor) -> SpectreCluster {
-        // 新しいSpectreの角度を計算
-        // levelによって頂点を合わせる場合に接合する辺の選びかたが変わる
-        let angle = if self.level % 2 == 1 {
-            // 奇数番目のlevelでは新しいClusterを辺が密着するまで時計回りに回転させる
-            self.edge_direction_into(from_anchor).opposite()
-        } else {
-            // 偶数番目のlevelでは反時計回りに回転させる
-            let rotation = self.edge_direction_from(to_anchor)
-                - self.edge_direction_into(to_anchor).opposite();
-            self.edge_direction_from(from_anchor) + rotation
-        };
-
-        SpectreCluster::with_anchor(to_anchor, self.coordinate(from_anchor), angle, self.level)
+        let level = self.level as usize;
+        let (anchor1, direction) =
+            bounds::table().connected(level, self.anchor1, self.direction, from_anchor, to_anchor);
+        Self::from_anchor1(anchor1, direction, level)
     }
 
     pub fn into_mystic_cluster(self) -> MysticCluster {
-        MysticCluster::new(
-            self.a, self.b, self.c, self.d, self.f, self.g, self.h, self.level,
-        )
+        let [a, b, c, d, _e, f, g] = self.children;
+        MysticCluster::new(a, b, c, d, f, g, self.h, self.level as usize)
     }
 
+    #[inline]
     pub fn to_skeleton(&self) -> Skeleton {
-        Skeleton::with_anchor(
-            Anchor::Anchor1,
-            self.coordinate(Anchor::Anchor1),
-            self.edge_direction_from(Anchor::Anchor1),
-            self.level,
-            Some(self.bbox()),
+        Skeleton::from_anchor1(
+            self.anchor1,
+            self.direction,
+            self.level as usize,
+            Some(self.bbox),
         )
     }
 
     pub fn update(&mut self, bbox: &Aabb) {
-        if self.level < MIN_PARTIAL_CLUSTER_LEVEL {
+        if (self.level as usize) < MIN_PARTIAL_CLUSTER_LEVEL {
             return;
         }
-        self.a.update(bbox);
-        self.b.update(bbox);
-        self.c.update(bbox);
-        self.d.update(bbox);
-        self.e.update(bbox);
-        self.f.update(bbox);
-        self.g.update(bbox);
+        for child in &mut self.children {
+            child.update(bbox);
+        }
         self.h.update(bbox);
-        let mut bbox = Aabb::NULL;
-        bbox = bbox.union(&self.a.bbox());
-        bbox = bbox.union(&self.b.bbox());
-        bbox = bbox.union(&self.c.bbox());
-        bbox = bbox.union(&self.d.bbox());
-        bbox = bbox.union(&self.e.bbox());
-        bbox = bbox.union(&self.f.bbox());
-        bbox = bbox.union(&self.g.bbox());
-        bbox = bbox.union(&self.h.bbox());
-        self.bbox = bbox;
+        let mut new_bbox = self.h.bbox();
+        for child in &self.children {
+            new_bbox = new_bbox.union(&child.bbox());
+        }
+        self.bbox = new_bbox;
     }
 
+    #[inline]
     pub fn spectres_in(&self, bbox: Aabb) -> SpectreIter<'_> {
         SpectreIter::new(self, bbox)
     }
 
+    #[inline]
     pub fn coordinate(&self, anchor: Anchor) -> HexVec {
         match anchor {
-            Anchor::Anchor1 => self.g.coordinate(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.coordinate(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.coordinate(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.coordinate(Anchor::Anchor2),
+            Anchor::Anchor1 => self.anchor1,
+            _ => {
+                self.anchor1
+                    + bounds::table()
+                        .entry(self.level as usize, self.direction)
+                        .anchors[anchor.slot()]
+            }
         }
     }
 
+    #[inline]
     pub fn edge_direction_from(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self.g.edge_direction_from(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.edge_direction_from(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.edge_direction_from(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.edge_direction_from(Anchor::Anchor2),
+            Anchor::Anchor1 => self.direction,
+            _ => {
+                bounds::table()
+                    .entry(self.level as usize, self.direction)
+                    .edge_from[anchor.slot()]
+            }
         }
     }
 
+    #[inline]
     pub fn edge_direction_into(&self, anchor: Anchor) -> Angle {
-        match anchor {
-            Anchor::Anchor1 => self.g.edge_direction_into(Anchor::Anchor3),
-            Anchor::Anchor2 => self.d.edge_direction_into(Anchor::Anchor2),
-            Anchor::Anchor3 => self.b.edge_direction_into(Anchor::Anchor3),
-            Anchor::Anchor4 => self.a.edge_direction_into(Anchor::Anchor2),
-        }
+        bounds::table()
+            .entry(self.level as usize, self.direction)
+            .edge_into[anchor.slot()]
     }
 
+    #[inline]
     pub fn bbox(&self) -> Aabb {
         self.bbox
     }
 
+    #[inline]
     pub fn level(&self) -> usize {
-        self.level
+        self.level as usize
     }
 }

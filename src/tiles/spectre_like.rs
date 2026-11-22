@@ -5,10 +5,19 @@ use super::{Anchor, MysticLike, Skeleton, Spectre, SpectreCluster};
 pub enum SpectreLike {
     Spectre(Spectre),
     Cluster(Box<SpectreCluster>),
-    Skeleton(Box<Skeleton>),
+    Skeleton(Skeleton),
 }
 
 impl SpectreLike {
+    #[inline]
+    pub(crate) fn from_anchor1(anchor1: HexVec, direction: Angle, level: usize) -> Self {
+        if level == 0 {
+            SpectreLike::Spectre(Spectre::from_anchor1(anchor1, direction))
+        } else {
+            SpectreLike::from(SpectreCluster::from_anchor1(anchor1, direction, level))
+        }
+    }
+
     pub fn with_anchor(
         anchor: Anchor,
         coordinate: HexVec,
@@ -70,6 +79,7 @@ impl SpectreLike {
         }
     }
 
+    #[inline]
     pub fn coordinate(&self, anchor: Anchor) -> HexVec {
         match self {
             SpectreLike::Spectre(spectre) => spectre.coordinate(anchor),
@@ -78,6 +88,7 @@ impl SpectreLike {
         }
     }
 
+    #[inline]
     pub fn edge_direction_from(&self, anchor: Anchor) -> Angle {
         match self {
             SpectreLike::Spectre(spectre) => spectre.edge_direction_from(anchor),
@@ -86,6 +97,7 @@ impl SpectreLike {
         }
     }
 
+    #[inline]
     pub fn edge_direction_into(&self, anchor: Anchor) -> Angle {
         match self {
             SpectreLike::Spectre(spectre) => spectre.edge_direction_into(anchor),
@@ -94,6 +106,7 @@ impl SpectreLike {
         }
     }
 
+    #[inline]
     pub fn bbox(&self) -> Aabb {
         match self {
             SpectreLike::Spectre(spectre) => spectre.bbox(),
@@ -102,6 +115,7 @@ impl SpectreLike {
         }
     }
 
+    #[inline]
     pub fn level(&self) -> usize {
         match self {
             SpectreLike::Spectre(_) => 0,
@@ -112,24 +126,28 @@ impl SpectreLike {
 }
 
 impl From<Spectre> for SpectreLike {
+    #[inline]
     fn from(spectre: Spectre) -> Self {
         SpectreLike::Spectre(spectre)
     }
 }
 
 impl From<SpectreCluster> for SpectreLike {
+    #[inline]
     fn from(cluster: SpectreCluster) -> Self {
         SpectreLike::Cluster(Box::new(cluster))
     }
 }
 
 impl From<Skeleton> for SpectreLike {
+    #[inline]
     fn from(skeleton: Skeleton) -> Self {
-        SpectreLike::Skeleton(Box::new(skeleton))
+        SpectreLike::Skeleton(skeleton)
     }
 }
 
 impl From<Box<SpectreLike>> for SpectreLike {
+    #[inline]
     fn from(value: Box<SpectreLike>) -> Self {
         *value
     }
