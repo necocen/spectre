@@ -53,6 +53,19 @@ impl Skeleton {
         Self::from_anchor1(anchor1, direction, level, None)
     }
 
+    #[inline]
+    pub(crate) fn wrap_as_child(&self, child_index: usize) -> Self {
+        let child_level = self.level as usize;
+        let parent_level = child_level + 1;
+        assert!(
+            parent_level <= MAX_CLUSTER_LEVEL,
+            "unsupported cluster level: {parent_level}"
+        );
+        let (anchor1, direction) =
+            bounds::table().wrap_child(child_level, self.anchor1, self.direction, child_index);
+        Self::from_anchor1(anchor1, direction, parent_level, None)
+    }
+
     pub fn to_spectre_cluster(&self, bbox: &Aabb) -> SpectreCluster {
         let level = self.level as usize;
         if level < MIN_PARTIAL_CLUSTER_LEVEL {
@@ -118,6 +131,16 @@ impl Skeleton {
             h,
             level,
         )
+    }
+
+    #[inline]
+    pub(crate) fn anchor1(&self) -> HexVec {
+        self.anchor1
+    }
+
+    #[inline]
+    pub(crate) fn direction(&self) -> Angle {
+        self.direction
     }
 
     #[inline]

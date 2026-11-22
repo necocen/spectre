@@ -1,5 +1,5 @@
 mod anchor;
-mod bounds;
+pub(crate) mod bounds;
 mod mystic;
 mod mystic_cluster;
 mod mystic_like;
