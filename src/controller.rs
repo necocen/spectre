@@ -1,9 +1,6 @@
 use std::cell::OnceCell;
+use std::f32::consts::PI;
 
-use lyon_tessellation::{
-    FillOptions, FillTessellator, VertexBuffers, geom::Point, geometry_builder::simple_builder,
-    path::Path,
-};
 use mikage::{InstanceVertex, glam::Vec2};
 
 use crate::{
@@ -17,57 +14,114 @@ use crate::{
 /// Maximum number of verified covered regions retained to skip redundant clipping checks.
 const MAX_VERIFIED_REGIONS: usize = 16;
 
+/// Exact CCW triangulation (12 triangles, 36 indices) of the canonical 14-vertex Spectre polygon.
+const SPECTRE_INDICES: [u32; 36] = [
+    13, 0, 1, 13, 1, 2, 13, 2, 3, 3, 4, 5, 3, 5, 6, 13, 3, 6, 13, 6, 7, 7, 8, 9, 7, 9, 10, 7, 10,
+    11, 7, 11, 12, 7, 12, 13,
+];
+
+/// Precomputed `(hue * 3 / PI) - 3.0` for each of the 12 discrete tile orientations.
+/// Because `hue = 3.84 + sin(angle) * 0.333` always lies in `[3.507, 4.173]`,
+/// `hp = hue * 3 / PI` is always in `[3.34, 3.99)` (sector 3 of HSV).
+const HUE_SECTOR_FRAC: [f32; 12] = [
+    (3.84 + 0.0 * 0.333) * (3.0 / PI) - 3.0,
+    (3.84 + 0.5 * 0.333) * (3.0 / PI) - 3.0,
+    (3.84 + 0.866_025_4 * 0.333) * (3.0 / PI) - 3.0,
+    (3.84 + 1.0 * 0.333) * (3.0 / PI) - 3.0,
+    (3.84 + 0.866_025_4 * 0.333) * (3.0 / PI) - 3.0,
+    (3.84 + 0.5 * 0.333) * (3.0 / PI) - 3.0,
+    (3.84 + 0.0 * 0.333) * (3.0 / PI) - 3.0,
+    (3.84 - 0.5 * 0.333) * (3.0 / PI) - 3.0,
+    (3.84 - 0.866_025_4 * 0.333) * (3.0 / PI) - 3.0,
+    (3.84 - 1.0 * 0.333) * (3.0 / PI) - 3.0,
+    (3.84 - 0.866_025_4 * 0.333) * (3.0 / PI) - 3.0,
+    (3.84 - 0.5 * 0.333) * (3.0 / PI) - 3.0,
+];
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SpectreInstance {
-    pub position: [f32; 3],
+    pub position: [f32; 2],
     pub angle: f32,
+    pub color: [u8; 4],
 }
 
 impl InstanceVertex for SpectreInstance {
     fn vertex_attributes() -> Vec<mikage::wgpu::VertexAttribute> {
-        vec![mikage::wgpu::VertexAttribute {
-            format: mikage::wgpu::VertexFormat::Float32x4,
-            offset: 0,
-            shader_location: 2,
-        }]
+        vec![
+            mikage::wgpu::VertexAttribute {
+                format: mikage::wgpu::VertexFormat::Float32x2,
+                offset: 0,
+                shader_location: 2,
+            },
+            mikage::wgpu::VertexAttribute {
+                format: mikage::wgpu::VertexFormat::Float32,
+                offset: 8,
+                shader_location: 3,
+            },
+            mikage::wgpu::VertexAttribute {
+                format: mikage::wgpu::VertexFormat::Unorm8x4,
+                offset: 12,
+                shader_location: 4,
+            },
+        ]
     }
 }
 
 /// Spectreタイルのメッシュを生成する
 pub fn create_spectre_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
-    let mut path_builder = Path::builder();
     let points = Spectre::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO).vertices();
-    let points_vec2: Vec<Vec2> = points.iter().map(|p| p.to_vec2()).collect();
-    path_builder.begin(Point::new(points_vec2[0].x, points_vec2[0].y));
-    for point in points_vec2.iter().skip(1) {
-        path_builder.line_to(Point::new(point.x, point.y));
-    }
-    path_builder.close();
-    let path = path_builder.build();
-
-    let mut buffers: VertexBuffers<Point<f32>, u16> = VertexBuffers::new();
-    {
-        let mut vertex_builder = simple_builder(&mut buffers).with_inverted_winding(); // +Z法線に合わせて反時計回り
-        let mut tessellator = FillTessellator::new();
-        let result =
-            tessellator.tessellate_path(&path, &FillOptions::default(), &mut vertex_builder);
-        assert!(result.is_ok());
-    }
-
-    let positions: Vec<[f32; 3]> = buffers.vertices.iter().map(|p| [p.x, p.y, 0.0]).collect();
-    let normals: Vec<[f32; 3]> = buffers.vertices.iter().map(|_| [0.0, 0.0, 1.0]).collect();
-    let indices: Vec<u32> = buffers.indices.iter().map(|&i| i as u32).collect();
+    let positions: Vec<[f32; 3]> = points
+        .iter()
+        .map(|p| {
+            let v = p.to_vec2();
+            [v.x, v.y, 0.0]
+        })
+        .collect();
+    let normals = vec![[0.0, 0.0, 1.0]; positions.len()];
+    let indices = SPECTRE_INDICES.to_vec();
 
     (positions, normals, indices)
+}
+
+/// Fast inline `sin(x)` using hardware float-to-int range reduction (no `libm` calls)
+/// and a degree-9 Taylor polynomial (max error < 4e-6, well below 8-bit color quantization).
+#[inline]
+fn fast_sin(x: f32) -> f32 {
+    const INV_TAU: f32 = 1.0 / (2.0 * PI);
+    let t = x * INV_TAU;
+    let rounded = (t + 0.5_f32.copysign(t)) as i32 as f32;
+    let y = (t - rounded) * 4.0; // [-2, 2]
+    let ay = y.abs();
+    let z = if ay > 1.0 { (2.0 - ay).copysign(y) } else { y };
+    let z2 = z * z;
+    z * (1.570_796_4
+        + z2 * (-0.645_964_1 + z2 * (0.079_692_626 + z2 * (-0.004_681_754 + z2 * 0.000_160_441_2))))
+}
+
+#[inline]
+fn instance_color(pos: Vec2, rotation: Angle) -> [u8; 4] {
+    let saturation = fast_sin(1.666 * pos.x) * 0.166 + 0.666;
+    let value = fast_sin(pos.y) * 0.166 + 0.833;
+    let chroma = value * saturation;
+    let r = value - chroma;
+    let g = value - chroma * HUE_SECTOR_FRAC[rotation.value() as usize];
+    let b = value;
+    [
+        (r * 255.0 + 0.5) as u8,
+        (g * 255.0 + 0.5) as u8,
+        (b * 255.0 + 0.5) as u8,
+        255,
+    ]
 }
 
 #[inline]
 fn instance_from_anchor1(anchor1: HexVec, rotation: Angle) -> SpectreInstance {
     let pos = anchor1.to_vec2();
     SpectreInstance {
-        position: [pos.x, pos.y, 0.0],
+        position: [pos.x, pos.y],
         angle: rotation.to_radians(),
+        color: instance_color(pos, rotation),
     }
 }
 
@@ -481,8 +535,8 @@ mod tests {
             [
                 instance.position[0].to_bits(),
                 instance.position[1].to_bits(),
-                instance.position[2].to_bits(),
                 instance.angle.to_bits(),
+                u32::from_ne_bytes(instance.color),
             ]
         };
         let initial_keys: std::collections::HashSet<_> = initial.iter().copied().map(key).collect();
@@ -586,6 +640,52 @@ mod tests {
                 .update_view(&viewport(0.12, Vec2::ZERO))
                 .is_none()
         );
+    }
+
+    #[test]
+    fn precomputed_instance_color_matches_general_hsv2rgb() {
+        let general_hsv2rgb = |h: f32, s: f32, v: f32| -> [f32; 3] {
+            let c = v * s;
+            let hp = h * (3.0 / PI);
+            let x = c * (1.0 - ((hp % 2.0) - 1.0).abs());
+            let m = v - c;
+            let (r, g, b) = if hp < 1.0 {
+                (c, x, 0.0)
+            } else if hp < 2.0 {
+                (x, c, 0.0)
+            } else if hp < 3.0 {
+                (0.0, c, x)
+            } else if hp < 4.0 {
+                (0.0, x, c)
+            } else if hp < 5.0 {
+                (x, 0.0, c)
+            } else {
+                (c, 0.0, x)
+            };
+            [r + m, g + m, b + m]
+        };
+
+        for dir in 0..12 {
+            let rot = Angle::new(dir);
+            let angle = rot.to_radians();
+            for &(x, y) in &[(0.0f32, 0.0f32), (12.34, -56.78), (-999.5, 432.1)] {
+                let h = 3.84 + angle.sin() * 0.333;
+                let s = (1.666 * x).sin() * 0.166 + 0.666;
+                let v = y.sin() * 0.166 + 0.833;
+                let expected = general_hsv2rgb(h, s, v);
+                let actual = instance_color(Vec2::new(x, y), rot);
+                for ch in 0..3 {
+                    let expected_u8 = (expected[ch] * 255.0 + 0.5) as u8;
+                    assert!(
+                        actual[ch].abs_diff(expected_u8) <= 1,
+                        "dir={dir}, pos=({x},{y}), ch={ch}: got {}, expected {}",
+                        actual[ch],
+                        expected_u8
+                    );
+                }
+                assert_eq!(actual[3], 255);
+            }
+        }
     }
 
     #[test]

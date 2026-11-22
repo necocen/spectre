@@ -7,8 +7,6 @@ rust-version = "1.95"
 [dependencies]
 mikage = { git = "https://github.com/necocen/mikage.git", tag = "v0.7.3", default-features = false, features = ["window", "webgl"] }
 bytemuck = { version = "1.21.0", features = ["derive"] }
-lyon_tessellation = "1.0.15"
-tracing = "0.1.41"
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
