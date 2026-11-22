@@ -33,11 +33,13 @@ impl std::fmt::Debug for HexValue {
                 } else {
                     write!(f, " - ")?;
                 }
+            } else if self.irrational < 0 {
+                write!(f, "-")?;
             }
             if self.irrational % 2 == 0 {
-                write!(f, "{}", i32::abs(self.irrational / 2))?;
+                write!(f, "{}", (self.irrational / 2).unsigned_abs())?;
             } else {
-                write!(f, "{}/2", i32::abs(self.irrational))?;
+                write!(f, "{}/2", self.irrational.unsigned_abs())?;
             }
             write!(f, " * √3")?;
         }
@@ -75,8 +77,12 @@ impl PartialOrd for HexValue {
     }
 }
 
+const SQRT_3_F32: f32 = 1.7320508;
+const SQRT_3_F64: f64 = 1.7320508075688772;
+
 impl HexValue {
     /// 新しいHexValueを生成
+    #[inline]
     pub const fn new(rational: i32, irrational: i32) -> Self {
         Self {
             rational,
@@ -87,59 +93,66 @@ impl HexValue {
     /// ゼロ値
     pub const ZERO: Self = Self::new(0, 0);
 
+    // cos(30° * n) = rational/2 + irrational*√3/2
+    const COS_TABLE: [Self; 12] = [
+        Self::new(2, 0),  // 0°
+        Self::new(0, 1),  // 30°
+        Self::new(1, 0),  // 60°
+        Self::new(0, 0),  // 90°
+        Self::new(-1, 0), // 120°
+        Self::new(0, -1), // 150°
+        Self::new(-2, 0), // 180°
+        Self::new(0, -1), // 210°
+        Self::new(-1, 0), // 240°
+        Self::new(0, 0),  // 270°
+        Self::new(1, 0),  // 300°
+        Self::new(0, 1),  // 330°
+    ];
+
+    // sin(30° * n) = rational/2 + irrational*√3/2
+    const SIN_TABLE: [Self; 12] = [
+        Self::new(0, 0),  // 0°
+        Self::new(1, 0),  // 30°
+        Self::new(0, 1),  // 60°
+        Self::new(2, 0),  // 90°
+        Self::new(0, 1),  // 120°
+        Self::new(1, 0),  // 150°
+        Self::new(0, 0),  // 180°
+        Self::new(-1, 0), // 210°
+        Self::new(0, -1), // 240°
+        Self::new(-2, 0), // 270°
+        Self::new(0, -1), // 300°
+        Self::new(-1, 0), // 330°
+    ];
+
     /// 正六角形の頂点に対応する角度のcos値を取得
-    pub fn cos(angle: Angle) -> Self {
-        // cos(30° * n) = rational/2 + irrational*√3/2
-        match angle.value() % 12 {
-            0 => Self::new(2, 0),  // cos(0°) = 1
-            1 => Self::new(0, 1),  // cos(30°) = √3/2
-            2 => Self::new(1, 0),  // cos(60°) = 1/2
-            3 => Self::new(0, 0),  // cos(90°) = 0
-            4 => Self::new(-1, 0), // cos(120°) = -1/2
-            5 => Self::new(0, -1), // cos(150°) = -√3/2
-            6 => Self::new(-2, 0), // cos(180°) = -1
-            7 => Self::new(0, -1), // cos(210°) = -√3/2
-            8 => Self::new(-1, 0), // cos(240°) = -1/2
-            9 => Self::new(0, 0),  // cos(270°) = 0
-            10 => Self::new(1, 0), // cos(300°) = 1/2
-            11 => Self::new(0, 1), // cos(330°) = √3/2
-            _ => unreachable!(),
-        }
+    #[inline]
+    pub const fn cos(angle: Angle) -> Self {
+        Self::COS_TABLE[angle.value() as usize]
     }
 
     /// 正六角形の頂点に対応する角度のsin値を取得
-    pub fn sin(angle: Angle) -> Self {
-        // sin(30° * n) = rational/2 + irrational*√3/2
-        match angle.value() % 12 {
-            0 => Self::new(0, 0),   // sin(0°) = 0
-            1 => Self::new(1, 0),   // sin(30°) = 1/2
-            2 => Self::new(0, 1),   // sin(60°) = √3/2
-            3 => Self::new(2, 0),   // sin(90°) = 1
-            4 => Self::new(0, 1),   // sin(120°) = √3/2
-            5 => Self::new(1, 0),   // sin(150°) = 1/2
-            6 => Self::new(0, 0),   // sin(180°) = 0
-            7 => Self::new(-1, 0),  // sin(210°) = -1/2
-            8 => Self::new(0, -1),  // sin(240°) = -√3/2
-            9 => Self::new(-2, 0),  // sin(270°) = -1
-            10 => Self::new(0, -1), // sin(300°) = -√3/2
-            11 => Self::new(-1, 0), // sin(330°) = -1/2
-            _ => unreachable!(),
-        }
+    #[inline]
+    pub const fn sin(angle: Angle) -> Self {
+        Self::SIN_TABLE[angle.value() as usize]
     }
 
     /// f32に変換
+    #[inline]
     pub fn to_f32(self) -> f32 {
-        self.rational as f32 / 2.0 + self.irrational as f32 * 3.0_f32.sqrt() / 2.0
+        self.rational as f32 * 0.5 + self.irrational as f32 * (SQRT_3_F32 * 0.5)
     }
 
+    #[inline]
     pub fn to_f64(self) -> f64 {
-        (f64::from(self.rational) + f64::from(self.irrational) * 3.0_f64.sqrt()) * 0.5
+        (f64::from(self.rational) + f64::from(self.irrational) * SQRT_3_F64) * 0.5
     }
 }
 
 impl Add for HexValue {
     type Output = Self;
 
+    #[inline]
     fn add(self, rhs: Self) -> Self {
         Self {
             rational: self.rational + rhs.rational,
@@ -149,6 +162,7 @@ impl Add for HexValue {
 }
 
 impl AddAssign for HexValue {
+    #[inline]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
@@ -157,6 +171,7 @@ impl AddAssign for HexValue {
 impl Sub for HexValue {
     type Output = Self;
 
+    #[inline]
     fn sub(self, rhs: Self) -> Self {
         Self {
             rational: self.rational - rhs.rational,
@@ -331,6 +346,9 @@ mod tests {
     fn test_display() {
         assert_eq!(HexValue::new(1, 2).to_string(), "1/2 + 1 * √3");
         assert_eq!(HexValue::new(-1, -2).to_string(), "-1/2 - 1 * √3");
+        assert_eq!(HexValue::new(0, 2).to_string(), "1 * √3");
+        assert_eq!(HexValue::new(0, -2).to_string(), "-1 * √3");
+        assert_eq!(HexValue::new(0, -1).to_string(), "-1/2 * √3");
         assert_eq!(HexValue::ZERO.to_string(), "0");
     }
 

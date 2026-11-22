@@ -11,23 +11,46 @@ impl Angle {
     /// 角度0度
     pub const ZERO: Self = Self(0);
 
+    const RADIANS: [f32; 12] = [
+        0.0 * PI / 6.0,
+        1.0 * PI / 6.0,
+        2.0 * PI / 6.0,
+        3.0 * PI / 6.0,
+        4.0 * PI / 6.0,
+        5.0 * PI / 6.0,
+        6.0 * PI / 6.0,
+        7.0 * PI / 6.0,
+        8.0 * PI / 6.0,
+        9.0 * PI / 6.0,
+        10.0 * PI / 6.0,
+        11.0 * PI / 6.0,
+    ];
+
     /// 角度を正規化して新しいAngleを生成
+    #[inline]
     pub const fn new(value: i32) -> Self {
         Self(value.rem_euclid(12) as u8)
     }
 
     /// 内部値を取得（0-11）
-    pub fn value(self) -> u8 {
+    #[inline]
+    pub const fn value(self) -> u8 {
         self.0
     }
 
     /// ラジアンに変換
-    pub fn to_radians(self) -> f32 {
-        self.0 as f32 * PI / 6.0
+    #[inline]
+    pub const fn to_radians(self) -> f32 {
+        Self::RADIANS[self.0 as usize]
     }
 
-    pub fn opposite(self) -> Self {
-        Self::new(self.0 as i32 + 6)
+    #[inline]
+    pub const fn opposite(self) -> Self {
+        if self.0 >= 6 {
+            Self(self.0 - 6)
+        } else {
+            Self(self.0 + 6)
+        }
     }
 }
 
@@ -35,8 +58,10 @@ impl Angle {
 impl std::ops::Add for Angle {
     type Output = Self;
 
+    #[inline]
     fn add(self, rhs: Self) -> Self {
-        Self::new(self.0 as i32 + rhs.0 as i32)
+        let sum = self.0 + rhs.0;
+        Self(if sum >= 12 { sum - 12 } else { sum })
     }
 }
 
@@ -44,21 +69,25 @@ impl std::ops::Add for Angle {
 impl std::ops::Sub for Angle {
     type Output = Self;
 
+    #[inline]
     fn sub(self, rhs: Self) -> Self {
-        Self::new(self.0 as i32 - rhs.0 as i32)
+        let diff = self.0 + 12 - rhs.0;
+        Self(if diff >= 12 { diff - 12 } else { diff })
     }
 }
 
 impl std::ops::Neg for Angle {
     type Output = Self;
 
+    #[inline]
     fn neg(self) -> Self {
-        Self::new(-(self.0 as i32))
+        Self(if self.0 == 0 { 0 } else { 12 - self.0 })
     }
 }
 
 // 角度の加算代入
 impl std::ops::AddAssign for Angle {
+    #[inline]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
@@ -66,6 +95,7 @@ impl std::ops::AddAssign for Angle {
 
 // 角度の減算代入
 impl std::ops::SubAssign for Angle {
+    #[inline]
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }

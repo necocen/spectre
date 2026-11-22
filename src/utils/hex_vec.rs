@@ -21,6 +21,7 @@ impl HexVec {
     pub const ZERO: Self = Self::new(HexValue::ZERO, HexValue::ZERO);
 
     /// Vec2に変換
+    #[inline]
     pub fn to_vec2(self) -> Vec2 {
         Vec2::new(self.x.to_f32(), self.y.to_f32())
     }
@@ -31,38 +32,76 @@ impl HexVec {
     /// # Arguments
     /// * `center` - 回転の中心点
     /// * `angle` - 回転角度
+    #[inline]
     pub fn rotate(self, center: Self, angle: Angle) -> Self {
         // 点を原点に移動
         let relative = self - center;
+        let xr = i64::from(relative.x.rational);
+        let xi = i64::from(relative.x.irrational);
+        let yr = i64::from(relative.y.rational);
+        let yi = i64::from(relative.y.irrational);
 
-        // 回転行列を使って回転
-        let cos = HexValue::cos(angle);
-        let sin = HexValue::sin(angle);
+        // 12方向それぞれで cos, sin の非ゼロ項だけを計算し、i64 経由で中間オーバーフローを防ぐ
+        let (rxr, rxi, ryr, ryi) = match angle.value() {
+            0 => (xr, xi, yr, yi),
+            1 => (
+                (3 * xi - yr) / 2,
+                (xr - yi) / 2,
+                (xr + 3 * yi) / 2,
+                (xi + yr) / 2,
+            ),
+            2 => (
+                (xr - 3 * yi) / 2,
+                (xi - yr) / 2,
+                (3 * xi + yr) / 2,
+                (xr + yi) / 2,
+            ),
+            3 => (-yr, -yi, xr, xi),
+            4 => (
+                (-xr - 3 * yi) / 2,
+                (-xi - yr) / 2,
+                (3 * xi - yr) / 2,
+                (xr - yi) / 2,
+            ),
+            5 => (
+                (-3 * xi - yr) / 2,
+                (-xr - yi) / 2,
+                (xr - 3 * yi) / 2,
+                (xi - yr) / 2,
+            ),
+            6 => (-xr, -xi, -yr, -yi),
+            7 => (
+                (-3 * xi + yr) / 2,
+                (-xr + yi) / 2,
+                (-xr - 3 * yi) / 2,
+                (-xi - yr) / 2,
+            ),
+            8 => (
+                (-xr + 3 * yi) / 2,
+                (-xi + yr) / 2,
+                (-3 * xi - yr) / 2,
+                (-xr - yi) / 2,
+            ),
+            9 => (yr, yi, -xr, -xi),
+            10 => (
+                (xr + 3 * yi) / 2,
+                (xi + yr) / 2,
+                (-3 * xi + yr) / 2,
+                (-xr + yi) / 2,
+            ),
+            11 => (
+                (3 * xi + yr) / 2,
+                (xr + yi) / 2,
+                (-xr + 3 * yi) / 2,
+                (-xi + yr) / 2,
+            ),
+            _ => unreachable!(),
+        };
 
-        let x = HexValue::new(
-            (3 * cos.irrational * relative.x.irrational + cos.rational * relative.x.rational
-                - 3 * sin.irrational * relative.y.irrational
-                - sin.rational * relative.y.rational)
-                / 2,
-            (cos.rational * relative.x.irrational + cos.irrational * relative.x.rational
-                - sin.rational * relative.y.irrational
-                - sin.irrational * relative.y.rational)
-                / 2,
+        let rotated = Self::new(
+            HexValue::new(rxr as i32, rxi as i32),
+            HexValue::new(ryr as i32, ryi as i32),
         );
-        let y = HexValue::new(
-            (3 * sin.irrational * relative.x.irrational
-                + sin.rational * relative.x.rational
-                + 3 * cos.irrational * relative.y.irrational
-                + cos.rational * relative.y.rational)
-                / 2,
-            (sin.rational * relative.x.irrational
-                + sin.irrational * relative.x.rational
-                + cos.rational * relative.y.irrational
-                + cos.irrational * relative.y.rational)
-                / 2,
-        );
-
-        let rotated = Self::new(x, y);
 
         // 中心点を加算して元の座標系に戻す
         center + rotated
@@ -72,6 +111,7 @@ impl HexVec {
 impl Add for HexVec {
     type Output = Self;
 
+    #[inline]
     fn add(self, rhs: Self) -> Self {
         Self {
             x: self.x + rhs.x,
@@ -81,6 +121,7 @@ impl Add for HexVec {
 }
 
 impl AddAssign for HexVec {
+    #[inline]
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
@@ -89,6 +130,7 @@ impl AddAssign for HexVec {
 impl Sub for HexVec {
     type Output = Self;
 
+    #[inline]
     fn sub(self, rhs: Self) -> Self {
         Self {
             x: self.x - rhs.x,

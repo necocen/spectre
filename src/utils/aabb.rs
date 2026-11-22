@@ -12,10 +12,12 @@ impl Aabb {
         max: Vec2::splat(f32::NEG_INFINITY),
     };
 
+    #[inline]
     pub fn from_min_max(min: Vec2, max: Vec2) -> Self {
         Self { min, max }
     }
 
+    #[inline]
     pub fn new(min_x: f32, min_y: f32, max_x: f32, max_y: f32) -> Self {
         Self {
             min: Vec2::new(min_x, min_y),
@@ -23,34 +25,32 @@ impl Aabb {
         }
     }
 
+    #[inline]
     pub fn intersection(&self, other: &Self) -> Self {
-        if (self == &Self::NULL) || (other == &Self::NULL) {
-            return Self::NULL;
-        }
-        let min = Vec2::new(self.min.x.max(other.min.x), self.min.y.max(other.min.y));
-        let max = Vec2::new(self.max.x.min(other.max.x), self.max.y.min(other.max.y));
-        Aabb::from_min_max(min, max)
+        Aabb::from_min_max(self.min.max(other.min), self.max.min(other.max))
     }
 
+    #[inline]
     pub fn union(&self, other: &Self) -> Self {
-        if self == &Self::NULL {
-            return *other;
-        } else if other == &Self::NULL {
-            return *self;
-        }
-        let min = Vec2::new(self.min.x.min(other.min.x), self.min.y.min(other.min.y));
-        let max = Vec2::new(self.max.x.max(other.max.x), self.max.y.max(other.max.y));
-        Aabb::from_min_max(min, max)
+        Aabb::from_min_max(self.min.min(other.min), self.max.max(other.max))
     }
 
+    #[inline]
     pub fn has_intersection(&self, other: &Self) -> bool {
-        !self.intersection(other).is_empty()
+        self.min.x < other.max.x
+            && other.min.x < self.max.x
+            && self.min.y < other.max.y
+            && other.min.y < self.max.y
+            && !self.is_empty()
+            && !other.is_empty()
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.min.x >= self.max.x || self.min.y >= self.max.y
     }
 
+    #[inline]
     pub fn contains(&self, point: Vec2) -> bool {
         self.min.x <= point.x
             && point.x <= self.max.x
@@ -58,6 +58,7 @@ impl Aabb {
             && point.y <= self.max.y
     }
 
+    #[inline]
     pub fn contains_aabb(&self, other: &Self) -> bool {
         !self.is_empty()
             && !other.is_empty()
@@ -65,6 +66,7 @@ impl Aabb {
             && self.contains(other.max)
     }
 
+    #[inline]
     pub fn area(&self) -> f64 {
         if self.is_empty() {
             return 0.0;
