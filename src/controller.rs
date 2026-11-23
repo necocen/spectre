@@ -1,3 +1,5 @@
+use std::cell::OnceCell;
+
 use lyon_tessellation::{
     FillOptions, FillTessellator, VertexBuffers, geom::Point, geometry_builder::simple_builder,
     path::Path,
@@ -5,9 +7,15 @@ use lyon_tessellation::{
 use mikage::{InstanceVertex, glam::Vec2};
 
 use crate::{
-    tiles::{Anchor, Skeleton, Spectre, SpectreCluster, SpectreIter},
+    tiles::{
+        Anchor, Skeleton, Spectre, SpectreCluster, SpectreIter,
+        bounds::{self, LEAF_LEVEL, SubstitutionTable},
+    },
     utils::{Aabb, Angle, HexVec},
 };
+
+/// Maximum number of verified covered regions retained to skip redundant clipping checks.
+const MAX_VERIFIED_REGIONS: usize = 16;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
@@ -55,20 +63,202 @@ pub fn create_spectre_mesh() -> (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<u32>) {
 }
 
 #[inline]
-fn to_instance(spectre: &Spectre) -> SpectreInstance {
-    let anchor_pos = spectre.coordinate(Anchor::Anchor1).to_vec2();
+fn instance_from_anchor1(anchor1: HexVec, rotation: Angle) -> SpectreInstance {
+    let pos = anchor1.to_vec2();
     SpectreInstance {
-        position: [anchor_pos.x, anchor_pos.y, 0.0],
-        angle: spectre.rotation().to_radians(),
+        position: [pos.x, pos.y, 0.0],
+        angle: rotation.to_radians(),
+    }
+}
+
+#[inline]
+fn to_instance(spectre: &Spectre) -> SpectreInstance {
+    instance_from_anchor1(spectre.anchor1(), spectre.rotation())
+}
+
+#[derive(Default)]
+struct Coverage {
+    whole_tiles: usize,
+    boundary_area: f64,
+}
+
+impl Coverage {
+    #[inline]
+    fn total_area(&self) -> f64 {
+        self.whole_tiles as f64 * Spectre::area() + self.boundary_area
+    }
+}
+
+/// Computes the covered area inside `bbox` without emitting instances.
+/// Subtrees completely contained in `bbox` are accounted for in O(1) via `tile_count`.
+fn measure_coverage_node(
+    table: &SubstitutionTable,
+    level: usize,
+    anchor1: HexVec,
+    direction: Angle,
+    is_mystic: bool,
+    bbox: &Aabb,
+    coverage: &mut Coverage,
+) {
+    if level == LEAF_LEVEL {
+        for leaf in table.leaves(direction, is_mystic) {
+            let tile = Spectre::from_anchor1(anchor1 + leaf.offset, leaf.rotation);
+            let tile_bbox = tile.bbox();
+            if !tile_bbox.has_intersection(bbox) {
+                continue;
+            }
+            if bbox.contains_aabb(&tile_bbox) {
+                coverage.whole_tiles += 1;
+            } else {
+                coverage.boundary_area += tile.area_in(bbox);
+            }
+        }
+        return;
+    }
+
+    let entry = table.entry(level, direction);
+    if level == 0 {
+        let mut measure_tile = |tile_anchor1: HexVec, tile_rot: Angle| {
+            let tile = Spectre::from_anchor1(tile_anchor1, tile_rot);
+            let tile_bbox = tile.bbox();
+            if !tile_bbox.has_intersection(bbox) {
+                return;
+            }
+            if bbox.contains_aabb(&tile_bbox) {
+                coverage.whole_tiles += 1;
+            } else {
+                coverage.boundary_area += tile.area_in(bbox);
+            }
+        };
+        measure_tile(anchor1, direction);
+        if is_mystic {
+            measure_tile(
+                anchor1 + entry.mystic_upper.offset,
+                entry.mystic_upper.direction,
+            );
+        }
+        return;
+    }
+
+    let child_level = level - 1;
+    for (index, child) in entry.children.iter().enumerate() {
+        if is_mystic && index == 4 {
+            continue;
+        }
+        let child_anchor1 = anchor1 + child.offset;
+        let child_is_mystic = index == 7;
+        let child_bbox =
+            table.bounds_aabb(child_level, child.direction, child_anchor1, child_is_mystic);
+        if !child_bbox.has_intersection(bbox) {
+            continue;
+        }
+        if bbox.contains_aabb(&child_bbox) {
+            coverage.whole_tiles += table.tile_count(child_level, child_is_mystic);
+            continue;
+        }
+        measure_coverage_node(
+            table,
+            child_level,
+            child_anchor1,
+            child.direction,
+            child_is_mystic,
+            bbox,
+            coverage,
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn collect_instances_node(
+    table: &SubstitutionTable,
+    level: usize,
+    anchor1: HexVec,
+    direction: Angle,
+    is_mystic: bool,
+    fully_inside: bool,
+    bbox: &Aabb,
+    instances: &mut Vec<SpectreInstance>,
+) {
+    if level == LEAF_LEVEL {
+        let leaves = table.leaves(direction, is_mystic);
+        if fully_inside {
+            instances.extend(
+                leaves
+                    .iter()
+                    .map(|leaf| instance_from_anchor1(anchor1 + leaf.offset, leaf.rotation)),
+            );
+        } else {
+            for leaf in leaves {
+                let tile = Spectre::from_anchor1(anchor1 + leaf.offset, leaf.rotation);
+                if tile.bbox().has_intersection(bbox) {
+                    instances.push(to_instance(&tile));
+                }
+            }
+        }
+        return;
+    }
+
+    let entry = table.entry(level, direction);
+    if level == 0 {
+        let mut emit_tile = |tile_anchor1: HexVec, tile_rot: Angle| {
+            if fully_inside {
+                instances.push(instance_from_anchor1(tile_anchor1, tile_rot));
+                return;
+            }
+            let tile = Spectre::from_anchor1(tile_anchor1, tile_rot);
+            if tile.bbox().has_intersection(bbox) {
+                instances.push(to_instance(&tile));
+            }
+        };
+        emit_tile(anchor1, direction);
+        if is_mystic {
+            emit_tile(
+                anchor1 + entry.mystic_upper.offset,
+                entry.mystic_upper.direction,
+            );
+        }
+        return;
+    }
+
+    let child_level = level - 1;
+    for (index, child) in entry.children.iter().enumerate() {
+        if is_mystic && index == 4 {
+            continue;
+        }
+        let child_anchor1 = anchor1 + child.offset;
+        let child_is_mystic = index == 7;
+        let child_inside = if fully_inside {
+            true
+        } else {
+            let child_bbox =
+                table.bounds_aabb(child_level, child.direction, child_anchor1, child_is_mystic);
+            if !child_bbox.has_intersection(bbox) {
+                continue;
+            }
+            bbox.contains_aabb(&child_bbox)
+        };
+        collect_instances_node(
+            table,
+            child_level,
+            child_anchor1,
+            child.direction,
+            child_is_mystic,
+            child_inside,
+            bbox,
+            instances,
+        );
     }
 }
 
 /// Maintains a generated region around the viewport and reusable instance data.
 /// GPU uploads are needed only when `update_view` returns a new slice.
 pub struct TilesController {
-    spectres: Option<SpectreCluster>,
+    root: Skeleton,
     instances: Vec<SpectreInstance>,
     generated_bbox: Option<Aabb>,
+    verified_bboxes: Vec<Aabb>,
+    materialized: OnceCell<SpectreCluster>,
+    materialized_bbox: Aabb,
 }
 
 impl Default for TilesController {
@@ -79,19 +269,15 @@ impl Default for TilesController {
 
 impl TilesController {
     pub fn new() -> Self {
-        let root = Skeleton::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO, 5, None)
-            .to_spectre_cluster(&Aabb::NULL);
+        let root = Skeleton::with_anchor(Anchor::Anchor1, HexVec::ZERO, Angle::ZERO, 5, None);
         Self {
-            spectres: Some(root),
+            root,
             instances: Vec::new(),
             generated_bbox: None,
+            verified_bboxes: Vec::new(),
+            materialized: OnceCell::new(),
+            materialized_bbox: Aabb::NULL,
         }
-    }
-
-    fn root(&self) -> &SpectreCluster {
-        self.spectres
-            .as_ref()
-            .expect("the controller owns a root outside expansion")
     }
 
     /// Extend the root without moving existing tiles. Returns false at the limit.
@@ -99,38 +285,51 @@ impl TilesController {
         if self.level() >= crate::tiles::MAX_CLUSTER_LEVEL {
             return false;
         }
-        let root = self.spectres.take().expect("the controller owns a root");
-        self.spectres = Some(if root.level().is_multiple_of(2) {
-            SpectreCluster::with_child_a(root)
+        let child_index = if self.root.level().is_multiple_of(2) {
+            0
         } else {
-            SpectreCluster::with_child_f(root)
-        });
+            5
+        };
+        self.root = self.root.wrap_as_child(child_index);
         self.generated_bbox = None;
+        self.materialized.take();
         true
     }
 
     pub fn level(&self) -> usize {
-        self.root().level()
+        self.root.level()
     }
 
     pub fn update(&mut self, bbox: &Aabb) {
-        self.spectres
-            .as_mut()
-            .expect("the controller owns a root")
-            .update(bbox);
+        self.materialized_bbox = *bbox;
+        if let Some(cluster) = self.materialized.get_mut() {
+            cluster.update(bbox);
+        }
         self.generated_bbox = None;
     }
 
     pub fn spectres_in(&self, bbox: &Aabb) -> SpectreIter<'_> {
-        self.root().spectres_in(*bbox)
+        let cluster = self
+            .materialized
+            .get_or_init(|| self.root.to_spectre_cluster(&self.materialized_bbox));
+        cluster.spectres_in(*bbox)
     }
 
     pub fn cluster_bbox(&self) -> Aabb {
-        self.root().bbox()
+        self.root.estimated_bbox()
     }
 
     pub fn instances(&self) -> &[SpectreInstance] {
         &self.instances
+    }
+
+    fn record_verified_bbox(&mut self, bbox: Aabb) {
+        self.verified_bboxes
+            .retain(|existing| !bbox.contains_aabb(existing));
+        if self.verified_bboxes.len() >= MAX_VERIFIED_REGIONS {
+            self.verified_bboxes.remove(0);
+        }
+        self.verified_bboxes.push(bbox);
     }
 
     /// Update for the actual viewport, without a caller-supplied margin.
@@ -151,31 +350,69 @@ impl TilesController {
             return None;
         }
 
-        loop {
-            // Bounds are a cheap prerequisite; clipping below checks the actual
-            // shape as well, including the concave and completely empty regions.
-            while !self.cluster_bbox().contains_aabb(&bbox) && self.expand() {}
-            self.update(&bbox);
-            self.instances.clear();
-            let mut whole_tiles = 0usize;
-            let mut boundary_area = 0.0;
-            let root = self.spectres.as_ref().expect("the controller owns a root");
-            for spectre in root.spectres_in(bbox) {
-                self.instances.push(to_instance(spectre));
-                if bbox.contains_aabb(&spectre.bbox()) {
-                    whole_tiles += 1;
-                } else {
-                    boundary_area += spectre.area_in(&bbox);
-                }
-            }
-            let covered_area = whole_tiles as f64 * Spectre::area() + boundary_area;
+        let already_verified = self
+            .verified_bboxes
+            .iter()
+            .any(|verified| verified.contains_aabb(&bbox));
+        let table = bounds::table();
+
+        // Phase 1: Expand root until `bbox` is completely covered, using an O(1)-subtree
+        // coverage pass that avoids building instances for intermediate expansion levels.
+        if !already_verified {
             let requested_area = bbox.area();
             let tolerance = requested_area * 1e-8 + 1e-7;
-            if covered_area + tolerance >= requested_area || !self.expand() {
-                break;
+            loop {
+                while !self.cluster_bbox().contains_aabb(&bbox) && self.expand() {}
+                if self.level() >= crate::tiles::MAX_CLUSTER_LEVEL {
+                    break;
+                }
+                let root_bbox = self.cluster_bbox();
+                let mut coverage = Coverage::default();
+                if root_bbox.has_intersection(&bbox) {
+                    if bbox.contains_aabb(&root_bbox) {
+                        coverage.whole_tiles = table.tile_count(self.root.level(), false);
+                    } else {
+                        measure_coverage_node(
+                            table,
+                            self.root.level(),
+                            self.root.anchor1(),
+                            self.root.direction(),
+                            false,
+                            &bbox,
+                            &mut coverage,
+                        );
+                    }
+                }
+                if coverage.total_area() + tolerance >= requested_area {
+                    self.record_verified_bbox(bbox);
+                    break;
+                }
+                if !self.expand() {
+                    break;
+                }
             }
         }
+
+        // Phase 2: Emit GPU instances once at the final root level.
+        self.instances.clear();
+        let root_bbox = self.cluster_bbox();
+        if root_bbox.has_intersection(&bbox) {
+            let root_inside = bbox.contains_aabb(&root_bbox);
+            collect_instances_node(
+                table,
+                self.root.level(),
+                self.root.anchor1(),
+                self.root.direction(),
+                false,
+                root_inside,
+                &bbox,
+                &mut self.instances,
+            );
+        }
+
         self.generated_bbox = Some(bbox);
+        self.materialized_bbox = bbox;
+        self.materialized.take();
         Some(&self.instances)
     }
 }
@@ -197,9 +434,12 @@ mod tests {
         assert!(root.bbox().contains_aabb(&bbox));
         assert_eq!(root.spectres_in(bbox).count(), 0);
         let mut controller = TilesController {
-            spectres: Some(root),
+            root: root.to_skeleton(),
             instances: Vec::new(),
             generated_bbox: None,
+            verified_bboxes: Vec::new(),
+            materialized: OnceCell::new(),
+            materialized_bbox: Aabb::NULL,
         };
         assert!(!controller.update_view(&bbox).unwrap().is_empty());
         assert!(controller.level() > 5);

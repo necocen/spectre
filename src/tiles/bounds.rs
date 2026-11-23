@@ -7,6 +7,9 @@ use crate::utils::{Aabb, Angle, HexVec};
 
 const SQRT_3_F64: f64 = 1.7320508075688772;
 
+/// Flat leaf template depth used for zero-allocation traversal.
+pub(crate) const LEAF_LEVEL: usize = 2;
+
 /// Extrema stay in the exact coordinate system until translated to world space.
 /// `magnitude` bounds the sum of the absolute terms in each coordinate, including
 /// cancellation, so the resulting AABB also contains f32-rounded tile vertices.
@@ -86,6 +89,12 @@ impl ChildPlacement {
     };
 }
 
+#[derive(Clone, Copy)]
+pub(crate) struct LeafTile {
+    pub(crate) offset: HexVec,
+    pub(crate) rotation: Angle,
+}
+
 pub(crate) struct LevelEntry {
     pub(crate) anchors: [HexVec; 4],
     pub(crate) edge_from: [Angle; 4],
@@ -93,20 +102,34 @@ pub(crate) struct LevelEntry {
     pub(crate) spectre_bounds: ExactBounds,
     pub(crate) mystic_bounds: ExactBounds,
     pub(crate) children: [ChildPlacement; 8],
+    pub(crate) mystic_upper: ChildPlacement,
 }
 
 pub(crate) struct LevelTable {
     pub(crate) entries: [LevelEntry; 12],
+    pub(crate) spectre_tile_count: usize,
+    pub(crate) mystic_tile_count: usize,
 }
 
 pub(crate) struct SubstitutionTable {
     pub(crate) levels: Vec<LevelTable>,
+    pub(crate) spectre_leaves: [Vec<LeafTile>; 12],
+    pub(crate) mystic_leaves: [Vec<LeafTile>; 12],
 }
 
 impl SubstitutionTable {
     #[inline]
     pub(crate) fn entry(&self, level: usize, direction: Angle) -> &LevelEntry {
         &self.levels[level].entries[direction.value() as usize]
+    }
+
+    #[inline]
+    pub(crate) fn tile_count(&self, level: usize, is_mystic: bool) -> usize {
+        if is_mystic {
+            self.levels[level].mystic_tile_count
+        } else {
+            self.levels[level].spectre_tile_count
+        }
     }
 
     #[inline]
@@ -180,6 +203,15 @@ impl SubstitutionTable {
         let child_offset = self.entry(parent_level, parent_direction).children[child_index].offset;
         (child_anchor1 - child_offset, parent_direction)
     }
+
+    #[inline]
+    pub(crate) fn leaves(&self, direction: Angle, is_mystic: bool) -> &[LeafTile] {
+        if is_mystic {
+            &self.mystic_leaves[direction.value() as usize]
+        } else {
+            &self.spectre_leaves[direction.value() as usize]
+        }
+    }
 }
 
 fn connect_in_level(
@@ -208,6 +240,43 @@ fn connect_in_level(
     }
 }
 
+fn collect_leaves(
+    levels: &[LevelTable],
+    level: usize,
+    offset: HexVec,
+    direction: Angle,
+    is_mystic: bool,
+    out: &mut Vec<LeafTile>,
+) {
+    let entry = &levels[level].entries[direction.value() as usize];
+    if level == 0 {
+        out.push(LeafTile {
+            offset,
+            rotation: direction,
+        });
+        if is_mystic {
+            out.push(LeafTile {
+                offset: offset + entry.mystic_upper.offset,
+                rotation: entry.mystic_upper.direction,
+            });
+        }
+        return;
+    }
+    for (index, child) in entry.children.iter().enumerate() {
+        if is_mystic && index == 4 {
+            continue;
+        }
+        collect_leaves(
+            levels,
+            level - 1,
+            offset + child.offset,
+            child.direction,
+            index == 7,
+            out,
+        );
+    }
+}
+
 fn build_table() -> SubstitutionTable {
     let mut levels = Vec::with_capacity(MAX_CLUSTER_LEVEL + 1);
 
@@ -221,6 +290,10 @@ fn build_table() -> SubstitutionTable {
         let mystic = tile.into_mystic();
         let mystic_bounds = ExactBounds::from_points(mystic.lower().vertices())
             .union(ExactBounds::from_points(mystic.upper().vertices()));
+        let mystic_upper = ChildPlacement {
+            offset: mystic.upper().anchor1(),
+            direction: mystic.upper().rotation(),
+        };
         LevelEntry {
             anchors,
             edge_from,
@@ -228,10 +301,13 @@ fn build_table() -> SubstitutionTable {
             spectre_bounds,
             mystic_bounds,
             children: [ChildPlacement::ZERO; 8],
+            mystic_upper,
         }
     });
     levels.push(LevelTable {
         entries: level0_entries,
+        spectre_tile_count: 1,
+        mystic_tile_count: 2,
     });
 
     for level in 1..=MAX_CLUSTER_LEVEL {
@@ -305,12 +381,50 @@ fn build_table() -> SubstitutionTable {
                 spectre_bounds,
                 mystic_bounds,
                 children,
+                mystic_upper: ChildPlacement::ZERO,
             }
         });
-        levels.push(LevelTable { entries });
+        let spectre_tile_count = 7 * previous.spectre_tile_count + previous.mystic_tile_count;
+        let mystic_tile_count = 6 * previous.spectre_tile_count + previous.mystic_tile_count;
+        levels.push(LevelTable {
+            entries,
+            spectre_tile_count,
+            mystic_tile_count,
+        });
     }
 
-    SubstitutionTable { levels }
+    let spectre_count = levels[LEAF_LEVEL].spectre_tile_count;
+    let mystic_count = levels[LEAF_LEVEL].mystic_tile_count;
+    let spectre_leaves: [Vec<LeafTile>; 12] = std::array::from_fn(|direction| {
+        let mut tiles = Vec::with_capacity(spectre_count);
+        collect_leaves(
+            &levels,
+            LEAF_LEVEL,
+            HexVec::ZERO,
+            Angle::new(direction as i32),
+            false,
+            &mut tiles,
+        );
+        tiles
+    });
+    let mystic_leaves: [Vec<LeafTile>; 12] = std::array::from_fn(|direction| {
+        let mut tiles = Vec::with_capacity(mystic_count);
+        collect_leaves(
+            &levels,
+            LEAF_LEVEL,
+            HexVec::ZERO,
+            Angle::new(direction as i32),
+            true,
+            &mut tiles,
+        );
+        tiles
+    });
+
+    SubstitutionTable {
+        levels,
+        spectre_leaves,
+        mystic_leaves,
+    }
 }
 
 #[inline]
