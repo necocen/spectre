@@ -6,6 +6,7 @@ use super::{Anchor, Mystic, bounds::ExactBounds};
 
 struct Geometry {
     vertices: [HexVec; Spectre::VERTEX_COUNT],
+    vertices_f64: [DVec2; Spectre::VERTEX_COUNT],
     bounds: ExactBounds,
 }
 
@@ -21,23 +22,36 @@ pub struct Spectre {
 }
 
 impl Spectre {
-    pub fn coordinate(&self, anchor: Anchor) -> HexVec {
-        self.vertex(anchor.index())
+    #[inline]
+    pub fn anchor1(&self) -> HexVec {
+        self.anchor1
     }
 
+    #[inline]
+    pub fn coordinate(&self, anchor: Anchor) -> HexVec {
+        match anchor {
+            Anchor::Anchor1 => self.anchor1,
+            _ => self.vertex(anchor.index()),
+        }
+    }
+
+    #[inline]
     pub fn edge_direction_from(&self, anchor: Anchor) -> Angle {
         Self::EDGE_DIRECTIONS[anchor.index()] + self.rotation
     }
 
+    #[inline]
     pub fn edge_direction_into(&self, anchor: Anchor) -> Angle {
         Self::EDGE_DIRECTIONS[(anchor.index() + Self::VERTEX_COUNT - 1) % Self::VERTEX_COUNT]
             + self.rotation
     }
 
+    #[inline]
     pub fn bbox(&self) -> Aabb {
         self.bbox
     }
 
+    #[inline]
     pub fn rotation(&self) -> Angle {
         self.rotation
     }
@@ -64,7 +78,19 @@ impl Spectre {
         Angle::new(10),
     ];
 
+    /// Anchor1 と回転から直接タイルを生成する
+    #[inline]
+    pub(crate) fn from_anchor1(anchor1: HexVec, rotation: Angle) -> Self {
+        let geometry = Self::geometry(rotation);
+        Self {
+            rotation,
+            anchor1,
+            bbox: geometry.bounds.translated(anchor1).to_aabb(),
+        }
+    }
+
     /// 指定されたアンカーを基準点としてタイルを生成する
+    #[inline]
     pub fn with_anchor(
         anchor: Anchor,
         coordinate: impl Into<HexVec>,
@@ -74,6 +100,7 @@ impl Spectre {
     }
 
     /// Mysticに変換する
+    #[inline]
     pub fn into_mystic(self) -> Mystic {
         let lower = self;
         let upper = Spectre::with_vertex(lower.vertex(1), 13, lower.rotation + Angle::new(9));
@@ -111,6 +138,7 @@ impl Spectre {
     /// * `vertex` - 基準点の座標
     /// * `index` - 基準点のインデックス
     /// * `edge_direction` - anchor_pointから出る辺の角度
+    #[inline]
     fn with_vertex(vertex: HexVec, index: usize, edge_direction: Angle) -> Self {
         let angle = edge_direction - Self::EDGE_DIRECTIONS[index];
         let geometry = Self::geometry(angle);
@@ -128,10 +156,12 @@ impl Spectre {
         HexVec::new(HexValue::cos(total_angle), HexValue::sin(total_angle))
     }
 
+    #[inline]
     fn vertex(&self, index: usize) -> HexVec {
         self.anchor1 + Self::geometry(self.rotation).vertices[index]
     }
 
+    #[inline]
     fn geometry(rotation: Angle) -> &'static Geometry {
         static GEOMETRY: OnceLock<[Geometry; 12]> = OnceLock::new();
         &GEOMETRY.get_or_init(|| {
@@ -142,14 +172,18 @@ impl Spectre {
                     vertices[index] = vertices[index - 1]
                         + Self::direction_vector(rotation, Self::EDGE_DIRECTIONS[index - 1]);
                 }
+                let vertices_f64 =
+                    vertices.map(|vertex| DVec2::new(vertex.x.to_f64(), vertex.y.to_f64()));
                 Geometry {
                     bounds: ExactBounds::from_points(vertices),
                     vertices,
+                    vertices_f64,
                 }
             })
         })[rotation.value() as usize]
     }
 
+    #[inline]
     pub fn area() -> f64 {
         3.0 * (1.0 + 3.0_f64.sqrt())
     }
@@ -165,28 +199,30 @@ impl Spectre {
         }
 
         // Work relative to the tile's anchor to avoid subtracting large products
-        // in the shoelace formula. Each half-plane can at most double the number
-        // of vertices; both buffers fit all four clipping steps without allocation.
-        const CAPACITY: usize = Spectre::VERTEX_COUNT * 16;
+        // in the shoelace formula. A 14-gon clipped by 4 axis-aligned half-planes
+        // can add at most 7 vertices per pass (42 total); 64 fits with ample margin.
+        const CAPACITY: usize = 64;
         let anchor = DVec2::new(self.anchor1.x.to_f64(), self.anchor1.y.to_f64());
         let min = bbox.min.as_dvec2() - anchor;
         let max = bbox.max.as_dvec2() - anchor;
         let mut polygon = [DVec2::ZERO; CAPACITY];
         let mut scratch = [DVec2::ZERO; CAPACITY];
-        for (out, vertex) in polygon
-            .iter_mut()
-            .zip(Self::geometry(self.rotation).vertices)
-        {
-            *out = DVec2::new(vertex.x.to_f64(), vertex.y.to_f64());
-        }
+        polygon[..Self::VERTEX_COUNT].copy_from_slice(&Self::geometry(self.rotation).vertices_f64);
         let (mut source, mut target) = (&mut polygon, &mut scratch);
         let mut count = Self::VERTEX_COUNT;
-        for (axis, boundary, keep_greater) in [
-            (0, min.x, true),
-            (0, max.x, false),
-            (1, min.y, true),
-            (1, max.y, false),
-        ] {
+
+        // Only clip against rectangle edges that actually cross this tile's bbox.
+        let planes = [
+            (self.bbox.min.x < bbox.min.x, 0usize, min.x, true),
+            (self.bbox.max.x > bbox.max.x, 0usize, max.x, false),
+            (self.bbox.min.y < bbox.min.y, 1usize, min.y, true),
+            (self.bbox.max.y > bbox.max.y, 1usize, max.y, false),
+        ];
+
+        for (needs_clip, axis, boundary, keep_greater) in planes {
+            if !needs_clip {
+                continue;
+            }
             if count == 0 {
                 return 0.0;
             }
@@ -199,19 +235,22 @@ impl Spectre {
             };
             let mut output_count = 0;
             let mut previous = source[count - 1];
+            let mut prev_inside = inside(previous);
             for current in source[..count].iter().copied() {
-                if inside(previous) != inside(current) {
+                let curr_inside = inside(current);
+                if prev_inside != curr_inside {
                     let t = (boundary - previous[axis]) / (current[axis] - previous[axis]);
                     let mut intersection = previous + (current - previous) * t;
                     intersection[axis] = boundary;
                     target[output_count] = intersection;
                     output_count += 1;
                 }
-                if inside(current) {
+                if curr_inside {
                     target[output_count] = current;
                     output_count += 1;
                 }
                 previous = current;
+                prev_inside = curr_inside;
             }
             count = output_count;
             std::mem::swap(&mut source, &mut target);
@@ -219,10 +258,12 @@ impl Spectre {
         if count < 3 {
             return 0.0;
         }
-        (0..count)
-            .map(|index| source[index].perp_dot(source[(index + 1) % count]))
-            .sum::<f64>()
-            .abs()
-            * 0.5
+        let mut sum = 0.0;
+        let mut prev = source[count - 1];
+        for &curr in &source[..count] {
+            sum += prev.perp_dot(curr);
+            prev = curr;
+        }
+        sum.abs() * 0.5
     }
 }

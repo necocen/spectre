@@ -1,8 +1,10 @@
 use crate::utils::Aabb;
 
-use super::{Mystic, MysticCluster, MysticLike, Spectre, SpectreCluster, SpectreLike};
+use super::{
+    MAX_CLUSTER_LEVEL, Mystic, MysticCluster, MysticLike, Spectre, SpectreCluster, SpectreLike,
+};
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 enum Node<'a> {
     SpectreCluster(&'a SpectreCluster),
     MysticCluster(&'a MysticCluster),
@@ -11,6 +13,7 @@ enum Node<'a> {
 }
 
 impl<'a> Node<'a> {
+    #[inline]
     fn from_spectre_like(child: &'a SpectreLike) -> Option<Self> {
         match child {
             SpectreLike::Spectre(tile) => Some(Self::Spectre(tile)),
@@ -19,6 +22,7 @@ impl<'a> Node<'a> {
         }
     }
 
+    #[inline]
     fn from_mystic_like(child: &'a MysticLike) -> Option<Self> {
         match child {
             MysticLike::Mystic(pair) => Some(Self::Mystic(pair)),
@@ -27,33 +31,26 @@ impl<'a> Node<'a> {
         }
     }
 
-    fn get_child(&self, index: usize) -> Option<Node<'a>> {
+    #[inline]
+    fn get_child(self, index: u8) -> Option<Node<'a>> {
+        let idx = index as usize;
         match self {
             Node::SpectreCluster(cluster) => {
-                if index == 7 {
+                if idx == 7 {
                     Self::from_mystic_like(&cluster.h)
                 } else {
-                    [
-                        &cluster.a, &cluster.b, &cluster.c, &cluster.d, &cluster.e, &cluster.f,
-                        &cluster.g,
-                    ]
-                    .get(index)
-                    .and_then(|child| Self::from_spectre_like(child))
+                    Self::from_spectre_like(&cluster.children[idx])
                 }
             }
             Node::MysticCluster(cluster) => {
-                if index == 6 {
+                if idx == 6 {
                     Self::from_mystic_like(&cluster.h)
                 } else {
-                    [
-                        &cluster.a, &cluster.b, &cluster.c, &cluster.d, &cluster.f, &cluster.g,
-                    ]
-                    .get(index)
-                    .and_then(|child| Self::from_spectre_like(child))
+                    Self::from_spectre_like(&cluster.children[idx])
                 }
             }
             Node::Spectre(_) => None,
-            Node::Mystic(mystic) => match index {
+            Node::Mystic(mystic) => match idx {
                 0 => Some(Node::Spectre(mystic.lower())),
                 1 => Some(Node::Spectre(mystic.upper())),
                 _ => None,
@@ -61,7 +58,8 @@ impl<'a> Node<'a> {
         }
     }
 
-    fn num_children(&self) -> usize {
+    #[inline]
+    fn num_children(self) -> u8 {
         match self {
             Node::SpectreCluster(_) => 8,
             Node::MysticCluster(_) => 7,
@@ -70,7 +68,8 @@ impl<'a> Node<'a> {
         }
     }
 
-    fn bbox(&self) -> Aabb {
+    #[inline]
+    fn bbox(self) -> Aabb {
         match self {
             Node::SpectreCluster(cluster) => cluster.bbox(),
             Node::MysticCluster(cluster) => cluster.bbox(),
@@ -80,45 +79,85 @@ impl<'a> Node<'a> {
     }
 }
 
-impl<'a> From<&'a SpectreCluster> for Node<'a> {
-    fn from(cluster: &'a SpectreCluster) -> Self {
-        Node::SpectreCluster(cluster)
-    }
+#[derive(Clone, Copy)]
+struct Frame<'a> {
+    node: Node<'a>,
+    index: u8,
+    fully_inside: bool,
 }
+
+const STACK_CAPACITY: usize = MAX_CLUSTER_LEVEL + 2;
 
 #[derive(Clone)]
 pub struct SpectreIter<'a> {
-    parents: Vec<(Node<'a>, usize)>,
+    stack: [Option<Frame<'a>>; STACK_CAPACITY],
+    len: usize,
     bbox: Aabb,
 }
 
 impl<'a> SpectreIter<'a> {
+    #[inline]
     pub fn new(root: &'a SpectreCluster, bbox: Aabb) -> SpectreIter<'a> {
-        let mut parents = Vec::with_capacity(root.level() + 2);
-        parents.push((root.into(), 0));
-        SpectreIter { parents, bbox }
+        let mut stack = [None; STACK_CAPACITY];
+        let root_bbox = root.bbox();
+        let len = if root_bbox.has_intersection(&bbox) {
+            stack[0] = Some(Frame {
+                node: Node::SpectreCluster(root),
+                index: 0,
+                fully_inside: bbox.contains_aabb(&root_bbox),
+            });
+            1
+        } else {
+            0
+        };
+        SpectreIter { stack, len, bbox }
     }
 }
 
 impl<'a> Iterator for SpectreIter<'a> {
     type Item = &'a Spectre;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        'outer: while let Some((parent, index)) = self.parents.pop() {
-            for i in index..parent.num_children() {
-                if let Some(child) = parent.get_child(i)
-                    && child.bbox().has_intersection(&self.bbox)
-                {
-                    if let Node::Spectre(spectre) = child {
-                        self.parents.push((parent, i + 1));
-                        return Some(spectre);
-                    } else {
-                        self.parents.push((parent, i + 1));
-                        self.parents.push((child, 0));
-                        continue 'outer;
-                    }
-                }
+        while self.len > 0 {
+            let top_idx = self.len - 1;
+            let frame = self.stack[top_idx].as_mut().unwrap();
+            let parent = frame.node;
+            let num_children = parent.num_children();
+            let parent_inside = frame.fully_inside;
+
+            if frame.index >= num_children {
+                self.len -= 1;
+                continue;
             }
+
+            let child_idx = frame.index;
+            frame.index = child_idx + 1;
+
+            let Some(child) = parent.get_child(child_idx) else {
+                continue;
+            };
+
+            let child_inside = if parent_inside {
+                true
+            } else {
+                let child_bbox = child.bbox();
+                if !child_bbox.has_intersection(&self.bbox) {
+                    continue;
+                }
+                self.bbox.contains_aabb(&child_bbox)
+            };
+
+            if let Node::Spectre(spectre) = child {
+                return Some(spectre);
+            }
+
+            self.stack[self.len] = Some(Frame {
+                node: child,
+                index: 0,
+                fully_inside: child_inside,
+            });
+            self.len += 1;
         }
         None
     }

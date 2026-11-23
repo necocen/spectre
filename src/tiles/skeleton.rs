@@ -1,29 +1,34 @@
 use crate::utils::{Aabb, Angle, HexVec};
 
 use super::{
-    Anchor, EDGE_CHAIN, MAX_CLUSTER_LEVEL, MIN_PARTIAL_CLUSTER_LEVEL, Spectre, SpectreCluster,
-    SpectreLike,
+    Anchor, MAX_CLUSTER_LEVEL, MIN_PARTIAL_CLUSTER_LEVEL, MysticCluster, MysticLike, Spectre,
+    SpectreCluster, SpectreLike, bounds,
 };
 
 #[derive(Clone, Copy, Debug)]
 pub struct Skeleton {
     anchor1: HexVec,
-    anchor2: HexVec,
-    anchor3: HexVec,
-    anchor4: HexVec,
-    edge_direction_into_anchor1: Angle,
-    edge_direction_from_anchor1: Angle,
-    edge_direction_into_anchor2: Angle,
-    edge_direction_from_anchor2: Angle,
-    edge_direction_into_anchor3: Angle,
-    edge_direction_from_anchor3: Angle,
-    edge_direction_into_anchor4: Angle,
-    edge_direction_from_anchor4: Angle,
-    level: usize,
+    direction: Angle,
+    level: u8,
     inherited_bbox: Option<Aabb>,
 }
 
 impl Skeleton {
+    #[inline]
+    pub(crate) fn from_anchor1(
+        anchor1: HexVec,
+        direction: Angle,
+        level: usize,
+        inherited_bbox: Option<Aabb>,
+    ) -> Self {
+        Self {
+            anchor1,
+            direction,
+            level: level as u8,
+            inherited_bbox,
+        }
+    }
+
     pub fn with_anchor(
         anchor: Anchor,
         coordinate: impl Into<HexVec>,
@@ -35,227 +40,163 @@ impl Skeleton {
             (1..=MAX_CLUSTER_LEVEL).contains(&level),
             "unsupported cluster level: {level}"
         );
-
-        // (起点の子インデックス, 起点アンカー, g/d/b/a に到達するのに必要なステップ数)
-        let (start_idx, start_anchor, steps) = match anchor {
-            Anchor::Anchor1 => (6, Anchor::Anchor3, 5), // g→...→d まで5ステップ
-            Anchor::Anchor2 => (3, Anchor::Anchor2, 6), // d→...→b まで6ステップ
-            Anchor::Anchor3 => (1, Anchor::Anchor3, 7), // b→...→a まで7ステップ
-            Anchor::Anchor4 => (0, Anchor::Anchor2, 6), // a→...→g まで6ステップ
-        };
-
-        let coordinate = coordinate.into();
-        let edge_direction = edge_direction.into();
-
-        // チェーン順に子を構築（座標抽出に必要な g, d, b, a に到達するまで）
-        let first: Skeleton = if level == 1 {
-            Spectre::with_anchor(start_anchor, coordinate, edge_direction).into()
-        } else {
-            Skeleton::with_anchor(start_anchor, coordinate, edge_direction, level - 1, None)
-        };
-
-        let mut children = [None; 8];
-        children[start_idx] = Some(first);
-        for i in 0..steps {
-            let curr_idx = (start_idx + i) % 8;
-            let (from_anchor, to_anchor) = EDGE_CHAIN[curr_idx];
-            let next = children[curr_idx]
-                .unwrap()
-                .connected_skeleton(from_anchor, to_anchor);
-            children[(curr_idx + 1) % 8] = Some(next);
-        }
-
-        // SpectreCluster のアンカー座標は g, d, b, a の特定アンカーから導出される
-        let g = children[6].unwrap();
-        let d = children[3].unwrap();
-        let b = children[1].unwrap();
-        let a = children[0].unwrap();
-
-        Self {
-            anchor1: g.coordinate(Anchor::Anchor3),
-            anchor2: d.coordinate(Anchor::Anchor2),
-            anchor3: b.coordinate(Anchor::Anchor3),
-            anchor4: a.coordinate(Anchor::Anchor2),
-            edge_direction_into_anchor1: g.edge_direction_into(Anchor::Anchor3),
-            edge_direction_from_anchor1: g.edge_direction_from(Anchor::Anchor3),
-            edge_direction_into_anchor2: d.edge_direction_into(Anchor::Anchor2),
-            edge_direction_from_anchor2: d.edge_direction_from(Anchor::Anchor2),
-            edge_direction_into_anchor3: b.edge_direction_into(Anchor::Anchor3),
-            edge_direction_from_anchor3: b.edge_direction_from(Anchor::Anchor3),
-            edge_direction_into_anchor4: a.edge_direction_into(Anchor::Anchor2),
-            edge_direction_from_anchor4: a.edge_direction_from(Anchor::Anchor2),
-            level,
-            inherited_bbox,
-        }
+        let (anchor1, direction) =
+            bounds::table().resolve_anchor(level, anchor, coordinate.into(), edge_direction.into());
+        Self::from_anchor1(anchor1, direction, level, inherited_bbox)
     }
 
+    #[inline]
     pub fn connected_skeleton(&self, from_anchor: Anchor, to_anchor: Anchor) -> Skeleton {
-        // 新しいSpectreの角度を計算
-        // levelによって頂点を合わせる場合に接合する辺の選びかたが変わる
-        let angle = if self.level % 2 == 1 {
-            // 奇数番目のlevelでは新しいSpectreClusterを辺が密着するまで時計回りに回転させる
-            self.edge_direction_into(from_anchor).opposite()
-        } else {
-            // 偶数番目のlevelでは反時計回りに回転させる
-            let rotation = self.edge_direction_from(to_anchor)
-                - self.edge_direction_into(to_anchor).opposite();
-            self.edge_direction_from(from_anchor) + rotation
-        };
-
-        // selfをコピー
-        let mut new_skeleton = *self;
-
-        // 回転角度を計算（目標のangleと現在のedge_direction(to_anchor)の差分）
-        let rotation = angle - self.edge_direction_from(to_anchor);
-
-        // 全てのanchorを回転
-        let base = self.coordinate(to_anchor);
-        new_skeleton.anchor1 = self.anchor1.rotate(base, rotation);
-        new_skeleton.anchor2 = self.anchor2.rotate(base, rotation);
-        new_skeleton.anchor3 = self.anchor3.rotate(base, rotation);
-        new_skeleton.anchor4 = self.anchor4.rotate(base, rotation);
-
-        // 全てのangleを回転
-        new_skeleton.edge_direction_into_anchor1 += rotation;
-        new_skeleton.edge_direction_from_anchor1 += rotation;
-        new_skeleton.edge_direction_into_anchor2 += rotation;
-        new_skeleton.edge_direction_from_anchor2 += rotation;
-        new_skeleton.edge_direction_into_anchor3 += rotation;
-        new_skeleton.edge_direction_from_anchor3 += rotation;
-        new_skeleton.edge_direction_into_anchor4 += rotation;
-        new_skeleton.edge_direction_from_anchor4 += rotation;
-
-        // 平行移動（self.point(from_anchor)とnew_skeleton.point(to_anchor)を一致させる）
-        let offset = self.coordinate(from_anchor) - new_skeleton.coordinate(to_anchor);
-        new_skeleton.anchor1 += offset;
-        new_skeleton.anchor2 += offset;
-        new_skeleton.anchor3 += offset;
-        new_skeleton.anchor4 += offset;
-        new_skeleton.inherited_bbox = None;
-
-        new_skeleton
+        let level = self.level as usize;
+        let (anchor1, direction) =
+            bounds::table().connected(level, self.anchor1, self.direction, from_anchor, to_anchor);
+        Self::from_anchor1(anchor1, direction, level, None)
     }
 
     pub fn to_spectre_cluster(&self, bbox: &Aabb) -> SpectreCluster {
-        if self.level < MIN_PARTIAL_CLUSTER_LEVEL {
+        let level = self.level as usize;
+        if level < MIN_PARTIAL_CLUSTER_LEVEL {
             // 小さいlevelのSkeletonはそのままClusterに変換
-            return SpectreCluster::with_anchor(
-                Anchor::Anchor1,
-                self.anchor1,
-                self.edge_direction_from_anchor1,
-                self.level,
-            );
+            return SpectreCluster::from_anchor1(self.anchor1, self.direction, level);
         }
 
-        let [a, b, c, d, e, f, g, h] = self.split_into_skeletons().map(|sub_skeleton| {
-            if sub_skeleton.estimated_bbox().has_intersection(bbox) {
-                SpectreLike::from(sub_skeleton.to_spectre_cluster(bbox))
+        let children = self.split_into_skeletons();
+        let make_spectre = |sub: Skeleton| {
+            if sub.estimated_bbox().has_intersection(bbox) {
+                SpectreLike::from(sub.to_spectre_cluster(bbox))
             } else {
-                SpectreLike::from(sub_skeleton)
+                SpectreLike::from(sub)
             }
-        });
-        let h = h.into_mystic_like();
+        };
+        let [a, b, c, d, e, f, g, h] = children;
+        let h = if h.estimated_mystic_bbox().has_intersection(bbox) {
+            MysticLike::from(h.to_mystic_cluster(bbox))
+        } else {
+            MysticLike::from(h)
+        };
 
-        SpectreCluster::new(a, b, c, d, e, f, g, h, self.level)
+        SpectreCluster::new(
+            make_spectre(a),
+            make_spectre(b),
+            make_spectre(c),
+            make_spectre(d),
+            make_spectre(e),
+            make_spectre(f),
+            make_spectre(g),
+            h,
+            level,
+        )
     }
 
+    pub(crate) fn to_mystic_cluster(self, bbox: &Aabb) -> MysticCluster {
+        let level = self.level as usize;
+        if level < MIN_PARTIAL_CLUSTER_LEVEL {
+            return MysticCluster::from_anchor1(self.anchor1, self.direction, level);
+        }
+
+        let [a, b, c, d, _e, f, g, h] = self.split_into_skeletons();
+        let make_spectre = |sub: Skeleton| {
+            if sub.estimated_bbox().has_intersection(bbox) {
+                SpectreLike::from(sub.to_spectre_cluster(bbox))
+            } else {
+                SpectreLike::from(sub)
+            }
+        };
+        let h = if h.estimated_mystic_bbox().has_intersection(bbox) {
+            MysticLike::from(h.to_mystic_cluster(bbox))
+        } else {
+            MysticLike::from(h)
+        };
+
+        MysticCluster::new(
+            make_spectre(a),
+            make_spectre(b),
+            make_spectre(c),
+            make_spectre(d),
+            make_spectre(f),
+            make_spectre(g),
+            h,
+            level,
+        )
+    }
+
+    #[inline]
     pub fn coordinate(&self, anchor: Anchor) -> HexVec {
         match anchor {
             Anchor::Anchor1 => self.anchor1,
-            Anchor::Anchor2 => self.anchor2,
-            Anchor::Anchor3 => self.anchor3,
-            Anchor::Anchor4 => self.anchor4,
+            _ => {
+                self.anchor1
+                    + bounds::table()
+                        .entry(self.level as usize, self.direction)
+                        .anchors[anchor.slot()]
+            }
         }
     }
 
+    #[inline]
     pub fn edge_direction_from(&self, anchor: Anchor) -> Angle {
         match anchor {
-            Anchor::Anchor1 => self.edge_direction_from_anchor1,
-            Anchor::Anchor2 => self.edge_direction_from_anchor2,
-            Anchor::Anchor3 => self.edge_direction_from_anchor3,
-            Anchor::Anchor4 => self.edge_direction_from_anchor4,
+            Anchor::Anchor1 => self.direction,
+            _ => {
+                bounds::table()
+                    .entry(self.level as usize, self.direction)
+                    .edge_from[anchor.slot()]
+            }
         }
     }
 
+    #[inline]
     pub fn edge_direction_into(&self, anchor: Anchor) -> Angle {
-        match anchor {
-            Anchor::Anchor1 => self.edge_direction_into_anchor1,
-            Anchor::Anchor2 => self.edge_direction_into_anchor2,
-            Anchor::Anchor3 => self.edge_direction_into_anchor3,
-            Anchor::Anchor4 => self.edge_direction_into_anchor4,
-        }
+        bounds::table()
+            .entry(self.level as usize, self.direction)
+            .edge_into[anchor.slot()]
     }
 
+    #[inline]
     pub fn estimated_bbox(&self) -> Aabb {
         if let Some(inherited_bbox) = self.inherited_bbox {
             return inherited_bbox;
         }
-
-        super::bounds::spectre_bounds(self)
+        bounds::table().bounds_aabb(self.level as usize, self.direction, self.anchor1, false)
     }
 
+    #[inline]
+    pub(crate) fn estimated_mystic_bbox(&self) -> Aabb {
+        if let Some(inherited_bbox) = self.inherited_bbox {
+            return inherited_bbox;
+        }
+        bounds::table().bounds_aabb(self.level as usize, self.direction, self.anchor1, true)
+    }
+
+    #[inline]
     pub fn level(&self) -> usize {
-        self.level
+        self.level as usize
     }
 
     /// 一つ下のlevelのskeletonのリストに変換
+    #[inline]
     pub(super) fn split_into_skeletons(self) -> [Skeleton; 8] {
-        let a = if self.level == 1 {
-            Spectre::with_anchor(
-                Anchor::Anchor2,
-                self.anchor4,
-                self.edge_direction_from(Anchor::Anchor4),
-            )
-            .into()
-        } else {
-            Skeleton::with_anchor(
-                Anchor::Anchor2,
-                self.anchor4,
-                self.edge_direction_from(Anchor::Anchor4),
-                self.level - 1,
+        let level = self.level as usize;
+        let child_level = level - 1;
+        let entry = bounds::table().entry(level, self.direction);
+        entry.children.map(|child| {
+            Skeleton::from_anchor1(
+                self.anchor1 + child.offset,
+                child.direction,
+                child_level,
                 None,
             )
-        };
-        let mut child = a;
-        std::array::from_fn(|index| {
-            if index > 0 {
-                let (from, to) = EDGE_CHAIN[index - 1];
-                child = child.connected_skeleton(from, to);
-            }
-            child
         })
     }
 }
 
 impl From<Spectre> for Skeleton {
+    #[inline]
     fn from(spectre: Spectre) -> Self {
-        let anchor1 = spectre.coordinate(Anchor::Anchor1);
-        let anchor2 = spectre.coordinate(Anchor::Anchor2);
-        let anchor3 = spectre.coordinate(Anchor::Anchor3);
-        let anchor4 = spectre.coordinate(Anchor::Anchor4);
-        let edge_direction_into_anchor1 = spectre.edge_direction_into(Anchor::Anchor1);
-        let edge_direction_from_anchor1 = spectre.edge_direction_from(Anchor::Anchor1);
-        let edge_direction_into_anchor2 = spectre.edge_direction_into(Anchor::Anchor2);
-        let edge_direction_from_anchor2 = spectre.edge_direction_from(Anchor::Anchor2);
-        let edge_direction_into_anchor3 = spectre.edge_direction_into(Anchor::Anchor3);
-        let edge_direction_from_anchor3 = spectre.edge_direction_from(Anchor::Anchor3);
-        let edge_direction_into_anchor4 = spectre.edge_direction_into(Anchor::Anchor4);
-        let edge_direction_from_anchor4 = spectre.edge_direction_from(Anchor::Anchor4);
-        let level = 0;
         Self {
-            anchor1,
-            anchor2,
-            anchor3,
-            anchor4,
-            edge_direction_into_anchor1,
-            edge_direction_from_anchor1,
-            edge_direction_into_anchor2,
-            edge_direction_from_anchor2,
-            edge_direction_into_anchor3,
-            edge_direction_from_anchor3,
-            edge_direction_into_anchor4,
-            edge_direction_from_anchor4,
-            level,
+            anchor1: spectre.anchor1(),
+            direction: spectre.rotation(),
+            level: 0,
             inherited_bbox: Some(spectre.bbox()),
         }
     }
